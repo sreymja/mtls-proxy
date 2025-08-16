@@ -1,0 +1,38 @@
+[Unit]
+Description=mTLS Proxy Server
+Documentation=https://github.com/your-org/mtls-proxy
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=mtls-proxy
+Group=mtls-proxy
+ExecStart=/usr/bin/mtls-proxy
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mtls-proxy
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/etc/mtls-proxy /var/lib/mtls-proxy /var/log/mtls-proxy
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Environment variables
+Environment=RUST_LOG=info
+Environment=RUST_BACKTRACE=0
+
+[Install]
+WantedBy=multi-user.target

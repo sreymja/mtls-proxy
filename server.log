@@ -1,0 +1,21 @@
+   Compiling mtls-proxy v0.1.0 (/Users/adammyers/github/sreymja/ai-experiments/mtls-proxy)
+warning: field `max_concurrent_requests` is never read
+  --> src/proxy.rs:43:5
+   |
+33 | struct AppState {
+   |        -------- field in this struct
+...
+43 |     max_concurrent_requests: usize,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `AppState` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` on by default
+
+warning: `mtls-proxy` (lib) generated 1 warning
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.52s
+warning: the following packages contain code that will be rejected by a future version of Rust: buf_redux v0.8.4, multipart v0.18.0, typemap v0.3.3
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running `target/debug/mtls-proxy`
+[2m2025-08-16T09:51:35.082282Z[0m [32m INFO[0m main ThreadId(01) Starting mTLS Proxy Server
+[2m2025-08-16T09:51:35.085275Z[0m [32m INFO[0m main ThreadId(01) Configuration loaded successfully
+Error: Invalid byte 32, offset 4.

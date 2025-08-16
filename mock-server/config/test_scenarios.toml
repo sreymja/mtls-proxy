@@ -1,0 +1,24 @@
+[scenarios.fast]
+name = "Fast Responses"
+default_delay_ms = 10
+error_rate_percent = 0
+
+[scenarios.slow]
+name = "Slow Responses"
+default_delay_ms = 5000
+error_rate_percent = 0
+
+[scenarios.errors]
+name = "Error Scenarios"
+default_delay_ms = 100
+error_rate_percent = 10
+
+[scenarios.timeout]
+name = "Timeout Scenarios"
+default_delay_ms = 30000
+error_rate_percent = 0
+
+[scenarios.high_load]
+name = "High Load Testing"
+default_delay_ms = 50
+error_rate_percent = 1

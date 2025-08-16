@@ -1,0 +1,11 @@
+/*/.env
+# git rm -r --cached .idea/
+.idea/
+/gpt_outputs/
+/**/target/
+/**/dist/
+/data-model-merger-workflow-v2/markdown_output/
+/mtls-proxy/mock-server/target/
+.DS_Store
+*/__pycache__/
+__pycache__

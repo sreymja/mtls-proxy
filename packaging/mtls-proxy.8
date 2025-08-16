@@ -1,0 +1,284 @@
+.TH MTLS-PROXY 8 "January 2024" "mtls-proxy 0.1.0" "System Administration"
+
+.SH NAME
+mtls-proxy \- High-performance mTLS proxy server with web interface
+
+.SH SYNOPSIS
+.B mtls-proxy
+[\fB\-\-config\fR \fIFILE\fR]
+[\fB\-\-validate\-config\fR]
+[\fB\-\-version\fR]
+[\fB\-\-help\fR]
+
+.SH DESCRIPTION
+.B mtls-proxy
+is a high-performance, secure mTLS (mutual TLS) proxy server built in Rust with a modern web interface for configuration and monitoring.
+
+The proxy server acts as a reverse proxy, forwarding requests to target services while handling mTLS authentication. It provides a web interface for configuration management, certificate management, and monitoring.
+
+.SH OPTIONS
+.TP
+.BR \-\-config " " \fIFILE\fR
+Specify the configuration file to use. Defaults to \fI/etc/mtls-proxy/default.toml\fR.
+
+.TP
+.B \-\-validate\-config
+Validate the configuration file and exit. Useful for checking configuration syntax.
+
+.TP
+.B \-\-version
+Display version information and exit.
+
+.TP
+.B \-\-help
+Display help information and exit.
+
+.SH CONFIGURATION
+The mTLS proxy uses TOML configuration files. The main configuration file is typically located at \fI/etc/mtls-proxy/default.toml\fR.
+
+Configuration sections:
+.TP
+.B [server]
+Server configuration including host, port, and connection limits.
+
+.TP
+.B [tls]
+TLS configuration including certificate paths and verification settings.
+
+.TP
+.B [target]
+Target service configuration including base URL and timeout settings.
+
+.TP
+.B [logging]
+Logging configuration including log directory and retention settings.
+
+.TP
+.B [ui]
+Web interface configuration including port and enabled status.
+
+.SH FILES
+.TP
+.B /etc/mtls-proxy/default.toml
+Default configuration file.
+
+.TP
+.B /etc/mtls-proxy/local.toml
+Local configuration overrides (optional).
+
+.TP
+.B /etc/mtls-proxy/certs/
+Certificate directory for client certificates, private keys, and CA certificates.
+
+.TP
+.B /var/log/mtls-proxy/
+Log directory for proxy logs and audit logs.
+
+.TP
+.B /var/lib/mtls-proxy/
+Data directory for SQLite databases and other persistent data.
+
+.SH WEB INTERFACE
+The mTLS proxy provides a web interface accessible at \fIhttp://127.0.0.1:8080/ui\fR by default.
+
+Features:
+.TP
+.B Dashboard
+Overview of server status, connections, and recent activity.
+
+.TP
+.B Configuration
+Visual configuration editor with validation.
+
+.TP
+.B Certificate Management
+Upload, view, and manage certificates.
+
+.TP
+.B Logs Viewer
+Real-time log viewing with filtering.
+
+.TP
+.B Audit Trail
+Complete audit log with statistics.
+
+.SH API
+The mTLS proxy provides a REST API for programmatic access:
+
+.TP
+.B GET /health
+Health check endpoint.
+
+.TP
+.B GET /ui/api/config/validate
+Validate current configuration.
+
+.TP
+.B POST /ui/api/config/update
+Update configuration.
+
+.TP
+.B GET /ui/api/certificates/list
+List available certificates.
+
+.TP
+.B POST /ui/api/certificates/upload
+Upload new certificate.
+
+.TP
+.B DELETE /ui/api/certificates/delete
+Delete certificate.
+
+.TP
+.B GET /ui/api/audit/logs
+Retrieve audit logs.
+
+.TP
+.B GET /ui/api/audit/stats
+Retrieve audit statistics.
+
+.TP
+.B GET /metrics
+Prometheus-compatible metrics.
+
+.SH ENVIRONMENT VARIABLES
+.TP
+.B RUST_LOG
+Set logging level (debug, info, warn, error). Default: info.
+
+.TP
+.B RUST_BACKTRACE
+Enable backtrace for debugging. Default: 0.
+
+.TP
+.B MTLS_PROXY_*
+Environment variables can override configuration values. For example, \fBMTLS_PROXY_SERVER_PORT\fR overrides the server port.
+
+.SH EXAMPLES
+.TP
+Start the proxy with default configuration:
+.RS
+.B mtls-proxy
+.RE
+
+.TP
+Start with custom configuration file:
+.RS
+.B mtls-proxy --config /path/to/config.toml
+.RE
+
+.TP
+Validate configuration file:
+.RS
+.B mtls-proxy --validate-config --config /path/to/config.toml
+.RE
+
+.TP
+Start with debug logging:
+.RS
+.B RUST_LOG=debug mtls-proxy
+.RE
+
+.SH SYSTEMD INTEGRATION
+When installed as an RPM package, the mTLS proxy is configured as a systemd service.
+
+.TP
+Start the service:
+.RS
+.B systemctl start mtls-proxy
+.RE
+
+.TP
+Enable the service to start at boot:
+.RS
+.B systemctl enable mtls-proxy
+.RE
+
+.TP
+Check service status:
+.RS
+.B systemctl status mtls-proxy
+.RE
+
+.TP
+View service logs:
+.RS
+.B journalctl -u mtls-proxy
+.RE
+
+.SH SECURITY CONSIDERATIONS
+.TP
+.B Certificate Security
+Store certificates securely with appropriate permissions (600 for private keys, 644 for certificates).
+
+.TP
+.B Network Security
+Configure firewall rules to restrict access to necessary ports only.
+
+.TP
+.B Rate Limiting
+Enable and configure rate limiting to prevent abuse.
+
+.TP
+.B Log Security
+Implement log rotation and restrict access to log files.
+
+.TP
+.B Service Account
+The service runs as a dedicated user account (mtls-proxy) for security.
+
+.SH TROUBLESHOOTING
+.TP
+.B Server Won't Start
+Check certificate files and permissions. Verify configuration file syntax.
+
+.TP
+.B Certificate Errors
+Verify PEM format and file paths. Check certificate expiration.
+
+.TP
+.B Permission Denied
+Set appropriate file permissions for certificates and log directories.
+
+.TP
+.B Connection Timeouts
+Check network connectivity and target service availability.
+
+.SH EXIT STATUS
+.TP
+.B 0
+Successful completion.
+
+.TP
+.B 1
+Configuration error or validation failure.
+
+.TP
+.B 2
+Certificate or TLS configuration error.
+
+.TP
+.B 3
+Network or binding error.
+
+.SH SEE ALSO
+.TP
+.B systemctl(1)
+Systemd service management.
+
+.TP
+.B journalctl(1)
+Systemd journal viewing.
+
+.TP
+.B openssl(1)
+Certificate management and validation.
+
+.SH BUGS
+Report bugs to the project issue tracker at https://github.com/your-org/mtls-proxy/issues.
+
+.SH AUTHOR
+The mTLS proxy project team.
+
+.SH COPYRIGHT
+Copyright (c) 2024. Licensed under the MIT License.

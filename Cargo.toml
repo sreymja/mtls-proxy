@@ -1,0 +1,43 @@
+[package]
+name = "mtls-proxy"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.0", features = ["full"] }
+tokio-rustls = "0.24"
+tokio-util = { version = "0.7", features = ["compat"] }
+rustls = { version = "0.21", features = ["dangerous_configuration"] }
+rustls-pemfile = "1.0"
+warp = "0.3"
+hyper = { version = "0.14", features = ["full"] }
+hyper-rustls = "0.24"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["trace"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4"] }
+config = "0.14"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rusqlite = { version = "0.29", features = ["bundled"] }
+flate2 = "1.0"
+anyhow = "1.0"
+thiserror = "1.0"
+http-body-util = "0.1.3"
+clap = { version = "4.0", features = ["derive"] }
+futures-util = { version = "0.3", features = ["compat"] }
+tokio-signal = "0.1"
+http = "0.2"
+url = "2.4"
+prometheus = "0.13"
+
+# multipart = "0.18"  # Temporarily disabled
+# tempfile = "3.8"    # Temporarily disabled
+toml = "0.8"
+bytes = "1.0"
+
+[dev-dependencies]
+reqwest = { version = "0.11", features = ["json"] }
+tempfile = "3.8"

@@ -1,0 +1,28 @@
+# Local development configuration for mTLS proxy
+# Copy this file and modify as needed for your local setup
+
+[server]
+host = "127.0.0.1"
+port = 8443
+max_connections = 1000
+connection_timeout_secs = 30
+
+[tls]
+client_cert_path = "certs/client.crt"
+client_key_path = "certs/client.key"
+ca_cert_path = "certs/ca.crt"
+verify_hostname = false  # Set to false for local development with self-signed certs
+
+[logging]
+log_dir = "logs"
+max_log_size_mb = 100
+retention_days = 30
+compression_enabled = true
+sqlite_db_path = "logs/proxy_logs.db"
+
+[target]
+base_url = "https://localhost:8443"  # Mock server URL
+timeout_secs = 60
+
+[ui]
+enabled = true

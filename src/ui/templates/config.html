@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mTLS Proxy - Configuration</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .nav {
+            background: #34495e;
+            padding: 10px 20px;
+        }
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 20px;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        .nav a:hover {
+            background: #2c3e50;
+        }
+        .nav a.active {
+            background: #3498db;
+        }
+        .content {
+            padding: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        input[type="text"], input[type="url"], input[type="number"], input[type="password"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        .file-upload {
+            border: 2px dashed #ddd;
+            border-radius: 4px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        .file-upload:hover {
+            border-color: #3498db;
+        }
+        .file-upload.dragover {
+            border-color: #3498db;
+            background-color: #ecf0f1;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+        .btn-danger {
+            background: #e74c3c;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        .btn-success {
+            background: #27ae60;
+        }
+        .btn-success:hover {
+            background: #229954;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .certificate-list {
+            list-style: none;
+            padding: 0;
+        }
+        .certificate-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+        }
+        .certificate-name {
+            font-weight: 600;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>mTLS Proxy Configuration</h1>
+        </div>
+        <div class="nav">
+            <a href="/ui">Dashboard</a>
+            <a href="/ui/logs">Logs</a>
+            <a href="/ui/config" class="active">Configuration</a>
+            <a href="/ui/audit">Audit Logs</a>
+        </div>
+        <div class="content">
+            <div id="status-message"></div>
+            
+            <!-- Target Configuration Section -->
+            <div class="section">
+                <h2>Target Configuration</h2>
+                <form id="targetConfigForm">
+                    <div class="form-group">
+                        <label for="targetUrl">Target URL:</label>
+                        <input type="url" id="targetUrl" name="targetUrl" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="timeout">Timeout (seconds):</label>
+                        <input type="number" id="timeout" name="timeout" min="1" max="300" value="60">
+                    </div>
+                    <div class="form-group">
+                        <label for="maxConnections">Max Connections:</label>
+                        <input type="number" id="maxConnections" name="maxConnections" min="1" max="10000" value="1000">
+                    </div>
+                    <button type="submit" class="btn btn-success">Save Target Configuration</button>
+                </form>
+            </div>
+
+            <!-- Certificate Management Section -->
+            <div class="section">
+                <h2>Certificate Management</h2>
+                <div class="form-group">
+                    <label>Upload Certificates:</label>
+                    <div class="file-upload" id="fileUpload">
+                        <p>Drag and drop certificate files here or click to browse</p>
+                        <input type="file" id="certFile" multiple accept=".crt,.key,.pem" style="display: none;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Current Certificates:</label>
+                    <div id="certificateList">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Loading certificates...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- Configuration Actions Section -->
+            <div class="section">
+                <h2>Configuration Actions</h2>
+                <button id="validateConfig" class="btn">Validate Configuration</button>
+                <button id="reloadConfig" class="btn">Reload Configuration</button>
+                <button id="exportConfig" class="btn">Export Configuration</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentConfig = null;
+        let certificates = [];
+
+        // Utility functions
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        function showLoading(show = true) {
+            const loading = document.querySelector('.loading');
+            loading.style.display = show ? 'block' : 'none';
+        }
+
+        // API functions
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            };
+            
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+
+            try {
+                const response = await fetch(endpoint, options);
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.message || 'API call failed');
+                }
+                
+                return result;
+            } catch (error) {
+                console.error('API call failed:', error);
+                throw error;
+            }
+        }
+
+        // Load current configuration
+        async function loadCurrentConfig() {
+            try {
+                const config = await apiCall('/ui/api/config/current');
+                currentConfig = config;
+                
+                // Populate form fields
+                document.getElementById('targetUrl').value = config.target.base_url;
+                document.getElementById('timeout').value = config.target.timeout_secs;
+                document.getElementById('maxConnections').value = config.server.max_connections;
+                
+                showStatus('Configuration loaded successfully', 'success');
+            } catch (error) {
+                showStatus('Failed to load configuration: ' + error.message, 'error');
+            }
+        }
+
+        // Load certificates
+        async function loadCertificates() {
+            try {
+                showLoading(true);
+                const result = await apiCall('/ui/api/certificates/list');
+                certificates = result.certificates || [];
+                displayCertificates();
+            } catch (error) {
+                showStatus('Failed to load certificates: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Display certificates
+        function displayCertificates() {
+            const container = document.getElementById('certificateList');
+            
+            if (certificates.length === 0) {
+                container.innerHTML = '<p>No certificates uploaded</p>';
+                return;
+            }
+
+            const list = document.createElement('ul');
+            list.className = 'certificate-list';
+            
+            certificates.forEach(cert => {
+                const item = document.createElement('li');
+                item.className = 'certificate-item';
+                item.innerHTML = `
+                    <span class="certificate-name">${cert}</span>
+                    <button class="btn btn-danger" onclick="deleteCertificate('${cert}')">Delete</button>
+                `;
+                list.appendChild(item);
+            });
+            
+            container.innerHTML = '';
+            container.appendChild(list);
+        }
+
+        // Delete certificate
+        async function deleteCertificate(filename) {
+            if (!confirm(`Are you sure you want to delete ${filename}?`)) {
+                return;
+            }
+
+            try {
+                await apiCall(`/ui/api/certificates/delete/${filename}`, 'DELETE');
+                showStatus(`Certificate ${filename} deleted successfully`, 'success');
+                loadCertificates();
+            } catch (error) {
+                showStatus('Failed to delete certificate: ' + error.message, 'error');
+            }
+        }
+
+        // Validate configuration
+        async function validateConfiguration() {
+            try {
+                await apiCall('/ui/api/config/validate', 'POST');
+                showStatus('Configuration is valid', 'success');
+            } catch (error) {
+                showStatus('Configuration validation failed: ' + error.message, 'error');
+            }
+        }
+
+        // File upload handling
+        function setupFileUpload() {
+            const fileUpload = document.getElementById('fileUpload');
+            const fileInput = document.getElementById('certFile');
+
+            fileUpload.addEventListener('click', () => fileInput.click());
+            
+            fileUpload.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileUpload.classList.add('dragover');
+            });
+            
+            fileUpload.addEventListener('dragleave', () => {
+                fileUpload.classList.remove('dragover');
+            });
+            
+            fileUpload.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileUpload.classList.remove('dragover');
+                handleFiles(e.dataTransfer.files);
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                handleFiles(e.target.files);
+            });
+        }
+
+        // Handle file uploads
+        async function handleFiles(files) {
+            for (const file of files) {
+                try {
+                    const certType = determineCertType(file.name);
+                    
+                    // Create FormData for multipart upload
+                    const formData = new FormData();
+                    formData.append('cert_type', certType.toLowerCase());
+                    formData.append('file', file);
+                    
+                    // Use fetch directly for multipart upload
+                    const response = await fetch('/ui/api/certificates/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'Upload failed');
+                    }
+                    
+                    const result = await response.json();
+                    showStatus(`Certificate ${file.name} uploaded successfully`, 'success');
+                } catch (error) {
+                    showStatus(`Failed to upload ${file.name}: ${error.message}`, 'error');
+                }
+            }
+            
+            loadCertificates();
+        }
+
+
+
+        // Determine certificate type from filename
+        function determineCertType(filename) {
+            const lower = filename.toLowerCase();
+            if (lower.includes('key') || lower.endsWith('.key')) {
+                return 'Key';
+            } else if (lower.includes('ca') || lower.includes('root')) {
+                return 'CA';
+            } else {
+                return 'Client';
+            }
+        }
+
+        // Form submission handlers
+        document.getElementById('targetConfigForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const configUpdate = {
+                target_url: formData.get('targetUrl'),
+                timeout_secs: parseInt(formData.get('timeout')),
+                max_connections: parseInt(formData.get('maxConnections')),
+
+
+            };
+            
+            try {
+                await apiCall('/ui/api/config/update', 'POST', configUpdate);
+                showStatus('Target configuration updated successfully', 'success');
+                loadCurrentConfig();
+            } catch (error) {
+                showStatus('Failed to update configuration: ' + error.message, 'error');
+            }
+        });
+
+
+
+        // Button event handlers
+        document.getElementById('validateConfig').addEventListener('click', validateConfiguration);
+        
+        document.getElementById('reloadConfig').addEventListener('click', () => {
+            loadCurrentConfig();
+            loadCertificates();
+        });
+        
+        document.getElementById('exportConfig').addEventListener('click', () => {
+            if (currentConfig) {
+                const dataStr = JSON.stringify(currentConfig, null, 2);
+                const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'mtls-proxy-config.json';
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+        });
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            setupFileUpload();
+            loadCurrentConfig();
+            loadCertificates();
+        });
+    </script>
+</body>
+</html>

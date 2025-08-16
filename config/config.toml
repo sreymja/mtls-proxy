@@ -1,0 +1,29 @@
+[server]
+host = "127.0.0.1"
+port = 8443
+max_connections = 200
+connection_timeout_secs = 30
+connection_pool_size = 10
+max_request_size_mb = 10
+max_concurrent_requests = 50
+rate_limit_requests_per_second = 100
+rate_limit_burst_size = 200
+
+[tls]
+client_cert_path = "certs/client.crt"
+client_key_path = "certs/client.key"
+verify_hostname = true
+
+[logging]
+log_dir = "logs"
+max_log_size_mb = 100
+retention_days = 30
+compression_enabled = true
+sqlite_db_path = "logs/proxy_logs.db"
+
+[target]
+base_url = "https://new.example.com"
+timeout_secs = 120
+
+[ui]
+enabled = true
