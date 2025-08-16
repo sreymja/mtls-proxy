@@ -29,7 +29,7 @@ async fn main() -> Result<()> {
 
     // Load configuration
     let mut config = Config::load()?;
-    
+
     // Override configuration with CLI arguments
     if let Some(host) = cli.host {
         config.server.host = host;
@@ -63,15 +63,30 @@ async fn main() -> Result<()> {
         println!("Configuration:");
         println!("  Server: {}:{}", config.server.host, config.server.port);
         println!("  Max Connections: {}", config.server.max_connections);
-        println!("  Max Request Size: {}MB", config.server.max_request_size_mb);
-        println!("  Max Concurrent Requests: {}", config.server.max_concurrent_requests);
-        println!("  Connection Pool Size: {}", config.server.connection_pool_size);
-        println!("  Rate Limit: {}/s (burst: {})", config.server.rate_limit_requests_per_second, config.server.rate_limit_burst_size);
-        
+        println!(
+            "  Max Request Size: {}MB",
+            config.server.max_request_size_mb
+        );
+        println!(
+            "  Max Concurrent Requests: {}",
+            config.server.max_concurrent_requests
+        );
+        println!(
+            "  Connection Pool Size: {}",
+            config.server.connection_pool_size
+        );
+        println!(
+            "  Rate Limit: {}/s (burst: {})",
+            config.server.rate_limit_requests_per_second, config.server.rate_limit_burst_size
+        );
+
         println!("  Target: {}", config.target.base_url);
         println!("  Client Cert: {}", config.tls.client_cert_path.display());
         println!("  Client Key: {}", config.tls.client_key_path.display());
-        println!("  CA Cert: {:?}", config.tls.ca_cert_path.as_ref().map(|p| p.display()));
+        println!(
+            "  CA Cert: {:?}",
+            config.tls.ca_cert_path.as_ref().map(|p| p.display())
+        );
         println!("  Verify Hostname: {}", config.tls.verify_hostname);
         println!("  Timeout: {}s", config.target.timeout_secs);
         return Ok(());

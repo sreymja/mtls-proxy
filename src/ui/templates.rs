@@ -83,32 +83,51 @@ pub fn dashboard_template(stats: &Value) -> String {
     )
 }
 
-pub fn logs_template(logs: &[(crate::logging::RequestLog, Option<crate::logging::ResponseLog>)], _params: &std::collections::HashMap<String, String>) -> String {
+pub fn logs_template(
+    logs: &[(
+        crate::logging::RequestLog,
+        Option<crate::logging::ResponseLog>,
+    )],
+    _params: &std::collections::HashMap<String, String>,
+) -> String {
     let mut filters_html = String::new();
-    
+
     // Build filter form
     filters_html.push_str(r#"<form method="GET" class="filters">"#);
-    filters_html.push_str(r#"<input type="text" name="method" placeholder="HTTP Method" value="" />"#);
-    filters_html.push_str(r#"<input type="number" name="status_code" placeholder="Status Code" value="" />"#);
-    filters_html.push_str(r#"<input type="number" name="limit" placeholder="Limit" value="100" />"#);
+    filters_html
+        .push_str(r#"<input type="text" name="method" placeholder="HTTP Method" value="" />"#);
+    filters_html.push_str(
+        r#"<input type="number" name="status_code" placeholder="Status Code" value="" />"#,
+    );
+    filters_html
+        .push_str(r#"<input type="number" name="limit" placeholder="Limit" value="100" />"#);
     filters_html.push_str(r#"<button type="submit">Filter</button>"#);
     filters_html.push_str("</form>");
-    
+
     let mut logs_html = String::new();
-    
+
     for (req, resp) in logs {
-        let status_class = resp.as_ref()
-            .map(|r| if r.status_code < 400 { "success" } else { "error" })
+        let status_class = resp
+            .as_ref()
+            .map(|r| {
+                if r.status_code < 400 {
+                    "success"
+                } else {
+                    "error"
+                }
+            })
             .unwrap_or("unknown");
-        
-        let status_code = resp.as_ref()
+
+        let status_code = resp
+            .as_ref()
             .map(|r| r.status_code.to_string())
             .unwrap_or_else(|| "N/A".to_string());
-        
-        let duration = resp.as_ref()
+
+        let duration = resp
+            .as_ref()
             .map(|r| format!("{}ms", r.duration_ms))
             .unwrap_or_else(|| "N/A".to_string());
-        
+
         logs_html.push_str(&format!(
             r#"
             <div class="log-entry {}">
@@ -144,7 +163,7 @@ pub fn logs_template(logs: &[(crate::logging::RequestLog, Option<crate::logging:
             req.body_size
         ));
     }
-    
+
     format!(
         r#"
 <!DOCTYPE html>
@@ -184,15 +203,18 @@ pub fn logs_template(logs: &[(crate::logging::RequestLog, Option<crate::logging:
 </body>
 </html>
 "#,
-        filters_html,
-        logs_html
+        filters_html, logs_html
     )
 }
 
 pub fn health_template(health: &Value) -> String {
     let status = health["status"].as_str().unwrap_or("unknown");
-    let status_class = if status == "healthy" { "healthy" } else { "unhealthy" };
-    
+    let status_class = if status == "healthy" {
+        "healthy"
+    } else {
+        "unhealthy"
+    };
+
     format!(
         r#"
 <!DOCTYPE html>
@@ -267,7 +289,9 @@ pub fn health_template(health: &Value) -> String {
         health["last_request"].as_str().unwrap_or("Never"),
         health["uptime"].as_str().unwrap_or("Unknown"),
         health["version"].as_str().unwrap_or("Unknown"),
-        health["config"]["server_host"].as_str().unwrap_or("Unknown"),
+        health["config"]["server_host"]
+            .as_str()
+            .unwrap_or("Unknown"),
         health["config"]["server_port"].as_u64().unwrap_or(0),
         health["config"]["max_connections"].as_u64().unwrap_or(0),
         health["config"]["target_url"].as_str().unwrap_or("Unknown")

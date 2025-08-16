@@ -10,44 +10,44 @@ pub enum ErrorCode {
     ConfigValidationFailed,
     ConfigUpdateFailed,
     ConfigLoadFailed,
-    
+
     // Certificate errors
     CertificateUploadFailed,
     CertificateDeleteFailed,
     CertificateNotFound,
     CertificateInvalid,
     CertificateParseError,
-    
+
     // File system errors
     FileNotFound,
     FilePermissionDenied,
     FileSystemError,
     FileTooLarge,
-    
+
     // Network errors
     ConnectionFailed,
     Timeout,
     RateLimitExceeded,
     RequestTooLarge,
-    
+
     // Database errors
     DatabaseError,
     AuditLogError,
-    
+
     // Validation errors
     ValidationError,
     InvalidInput,
     MissingRequiredField,
-    
+
     // Internal errors
     InternalError,
     SerializationError,
     DeserializationError,
-    
+
     // Authentication/Authorization errors
     Unauthorized,
     Forbidden,
-    
+
     // Not found errors
     NotFound,
     EndpointNotFound,
@@ -110,17 +110,17 @@ impl ErrorResponse {
             request_id: None,
         }
     }
-    
+
     pub fn with_details(mut self, details: String) -> Self {
         self.details = Some(details);
         self
     }
-    
+
     pub fn with_path(mut self, path: String) -> Self {
         self.path = Some(path);
         self
     }
-    
+
     pub fn with_request_id(mut self, request_id: String) -> Self {
         self.request_id = Some(request_id);
         self
@@ -213,7 +213,11 @@ impl fmt::Display for AppError {
 }
 
 impl AppError {
-    pub fn to_error_response(&self, path: Option<String>, request_id: Option<String>) -> ErrorResponse {
+    pub fn to_error_response(
+        &self,
+        path: Option<String>,
+        request_id: Option<String>,
+    ) -> ErrorResponse {
         match self {
             AppError::Config(e) => ErrorResponse::new(e.code.clone(), e.message.clone())
                 .with_details(e.details.clone().unwrap_or_default())
@@ -245,7 +249,7 @@ impl AppError {
                 .with_request_id(request_id.unwrap_or_default()),
         }
     }
-    
+
     pub fn status_code(&self) -> StatusCode {
         match self {
             AppError::Config(_) => StatusCode::BAD_REQUEST,
@@ -320,14 +324,28 @@ pub fn internal_error(code: ErrorCode, message: &str, details: Option<&str>) -> 
 /// User-friendly error messages
 pub fn get_user_friendly_message(code: &ErrorCode) -> &'static str {
     match code {
-        ErrorCode::ConfigValidationFailed => "The configuration is invalid. Please check your settings and try again.",
-        ErrorCode::ConfigUpdateFailed => "Failed to update configuration. Please try again or contact support.",
-        ErrorCode::ConfigLoadFailed => "Failed to load configuration. Please check your configuration files.",
-        ErrorCode::CertificateUploadFailed => "Failed to upload certificate. Please check the file format and try again.",
+        ErrorCode::ConfigValidationFailed => {
+            "The configuration is invalid. Please check your settings and try again."
+        }
+        ErrorCode::ConfigUpdateFailed => {
+            "Failed to update configuration. Please try again or contact support."
+        }
+        ErrorCode::ConfigLoadFailed => {
+            "Failed to load configuration. Please check your configuration files."
+        }
+        ErrorCode::CertificateUploadFailed => {
+            "Failed to upload certificate. Please check the file format and try again."
+        }
         ErrorCode::CertificateDeleteFailed => "Failed to delete certificate. Please try again.",
-        ErrorCode::CertificateNotFound => "Certificate not found. Please check the certificate name.",
-        ErrorCode::CertificateInvalid => "The certificate is invalid. Please check the certificate format.",
-        ErrorCode::CertificateParseError => "Failed to parse certificate. Please check the certificate format.",
+        ErrorCode::CertificateNotFound => {
+            "Certificate not found. Please check the certificate name."
+        }
+        ErrorCode::CertificateInvalid => {
+            "The certificate is invalid. Please check the certificate format."
+        }
+        ErrorCode::CertificateParseError => {
+            "Failed to parse certificate. Please check the certificate format."
+        }
         ErrorCode::FileNotFound => "File not found. Please check the file path.",
         ErrorCode::FilePermissionDenied => "Permission denied. Please check file permissions.",
         ErrorCode::FileSystemError => "File system error occurred. Please try again.",
@@ -340,12 +358,18 @@ pub fn get_user_friendly_message(code: &ErrorCode) -> &'static str {
         ErrorCode::AuditLogError => "Failed to log audit event. Please try again.",
         ErrorCode::ValidationError => "Validation failed. Please check your input.",
         ErrorCode::InvalidInput => "Invalid input provided. Please check your data.",
-        ErrorCode::MissingRequiredField => "Required field is missing. Please provide all required fields.",
-        ErrorCode::InternalError => "An internal error occurred. Please try again or contact support.",
+        ErrorCode::MissingRequiredField => {
+            "Required field is missing. Please provide all required fields."
+        }
+        ErrorCode::InternalError => {
+            "An internal error occurred. Please try again or contact support."
+        }
         ErrorCode::SerializationError => "Failed to serialize data. Please try again.",
         ErrorCode::DeserializationError => "Failed to parse data. Please check the format.",
         ErrorCode::Unauthorized => "Unauthorized access. Please check your credentials.",
-        ErrorCode::Forbidden => "Access forbidden. You don't have permission to perform this action.",
+        ErrorCode::Forbidden => {
+            "Access forbidden. You don't have permission to perform this action."
+        }
         ErrorCode::NotFound => "Resource not found. Please check the URL.",
         ErrorCode::EndpointNotFound => "API endpoint not found. Please check the URL.",
     }
@@ -357,8 +381,14 @@ mod tests {
 
     #[test]
     fn test_error_code_display() {
-        assert_eq!(ErrorCode::ConfigValidationFailed.to_string(), "CONFIG_VALIDATION_FAILED");
-        assert_eq!(ErrorCode::CertificateUploadFailed.to_string(), "CERTIFICATE_UPLOAD_FAILED");
+        assert_eq!(
+            ErrorCode::ConfigValidationFailed.to_string(),
+            "CONFIG_VALIDATION_FAILED"
+        );
+        assert_eq!(
+            ErrorCode::CertificateUploadFailed.to_string(),
+            "CERTIFICATE_UPLOAD_FAILED"
+        );
         assert_eq!(ErrorCode::ValidationError.to_string(), "VALIDATION_ERROR");
         assert_eq!(ErrorCode::InternalError.to_string(), "INTERNAL_ERROR");
     }
@@ -387,7 +417,10 @@ mod tests {
 
         assert_eq!(error_response.code, "CONFIG_VALIDATION_FAILED");
         assert_eq!(error_response.message, "Configuration validation failed");
-        assert_eq!(error_response.details, Some("Target URL must start with https://".to_string()));
+        assert_eq!(
+            error_response.details,
+            Some("Target URL must start with https://".to_string())
+        );
     }
 
     #[test]
@@ -409,7 +442,10 @@ mod tests {
         )
         .with_request_id("test-request-id".to_string());
 
-        assert_eq!(error_response.request_id, Some("test-request-id".to_string()));
+        assert_eq!(
+            error_response.request_id,
+            Some("test-request-id".to_string())
+        );
     }
 
     #[test]
@@ -428,32 +464,24 @@ mod tests {
         );
         assert_eq!(certificate_error.status_code(), StatusCode::BAD_REQUEST);
 
-        let filesystem_error = filesystem_error(
-            ErrorCode::FileSystemError,
-            "File system error",
-            None,
+        let filesystem_error =
+            filesystem_error(ErrorCode::FileSystemError, "File system error", None);
+        assert_eq!(
+            filesystem_error.status_code(),
+            StatusCode::INTERNAL_SERVER_ERROR
         );
-        assert_eq!(filesystem_error.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
 
-        let network_error = network_error(
-            ErrorCode::ConnectionFailed,
-            "Connection failed",
-            None,
-        );
+        let network_error = network_error(ErrorCode::ConnectionFailed, "Connection failed", None);
         assert_eq!(network_error.status_code(), StatusCode::BAD_GATEWAY);
 
-        let validation_error = validation_error(
-            "Validation failed",
-            None,
-        );
+        let validation_error = validation_error("Validation failed", None);
         assert_eq!(validation_error.status_code(), StatusCode::BAD_REQUEST);
 
-        let internal_error = internal_error(
-            ErrorCode::InternalError,
-            "Internal error",
-            None,
+        let internal_error = internal_error(ErrorCode::InternalError, "Internal error", None);
+        assert_eq!(
+            internal_error.status_code(),
+            StatusCode::INTERNAL_SERVER_ERROR
         );
-        assert_eq!(internal_error.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     #[test]
@@ -471,9 +499,15 @@ mod tests {
 
         assert_eq!(error_response.code, "CONFIG_VALIDATION_FAILED");
         assert_eq!(error_response.message, "Configuration validation failed");
-        assert_eq!(error_response.details, Some("Target URL must start with https://".to_string()));
+        assert_eq!(
+            error_response.details,
+            Some("Target URL must start with https://".to_string())
+        );
         assert_eq!(error_response.path, Some("/api/config/update".to_string()));
-        assert_eq!(error_response.request_id, Some("test-request-id".to_string()));
+        assert_eq!(
+            error_response.request_id,
+            Some("test-request-id".to_string())
+        );
     }
 
     #[test]

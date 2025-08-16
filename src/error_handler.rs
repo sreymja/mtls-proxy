@@ -11,7 +11,8 @@ use warp::{Rejection, Reply};
 /// Custom error handler that provides consistent error responses
 pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> {
     let request_id = Uuid::new_v4().to_string();
-    let path = err.find::<warp::path::FullPath>()
+    let path = err
+        .find::<warp::path::FullPath>()
         .map(|p| p.as_str().to_string())
         .unwrap_or_default();
 
@@ -101,7 +102,7 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> 
     } else {
         // Log unexpected errors
         tracing::error!("Unhandled rejection: {:?}", err);
-        
+
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             ErrorResponse::new(
@@ -121,8 +122,10 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> 
         error_response.message
     );
 
-    let json = serde_json::to_string(&error_response)
-        .unwrap_or_else(|_| r#"{"code":"SERIALIZATION_ERROR","message":"Failed to serialize error response"}"#.to_string());
+    let json = serde_json::to_string(&error_response).unwrap_or_else(|_| {
+        r#"{"code":"SERIALIZATION_ERROR","message":"Failed to serialize error response"}"#
+            .to_string()
+    });
 
     Ok(Response::builder()
         .status(status)
@@ -140,17 +143,17 @@ pub fn create_error_response(
     path: Option<&str>,
 ) -> ErrorResponse {
     let mut error_response = ErrorResponse::new(code, message.to_string());
-    
+
     if let Some(details) = details {
         error_response = error_response.with_details(details.to_string());
     }
-    
+
     if let Some(path) = path {
         error_response = error_response.with_path(path.to_string());
     }
-    
+
     error_response = error_response.with_request_id(Uuid::new_v4().to_string());
-    
+
     error_response
 }
 
@@ -160,20 +163,17 @@ pub fn create_validation_error_response(
     field_errors: Vec<crate::errors::FieldError>,
     path: Option<&str>,
 ) -> ErrorResponse {
-    let mut error_response = ErrorResponse::new(
-        ErrorCode::ValidationError,
-        message.to_string(),
-    );
-    
+    let mut error_response = ErrorResponse::new(ErrorCode::ValidationError, message.to_string());
+
     let details = format!("Validation failed for {} field(s)", field_errors.len());
     error_response = error_response.with_details(details);
-    
+
     if let Some(path) = path {
         error_response = error_response.with_path(path.to_string());
     }
-    
+
     error_response = error_response.with_request_id(Uuid::new_v4().to_string());
-    
+
     error_response
 }
 
@@ -190,8 +190,9 @@ pub fn create_success_response<T: serde::Serialize>(
         "request_id": Uuid::new_v4().to_string(),
     });
 
-    let json = serde_json::to_string(&response)
-        .unwrap_or_else(|_| r#"{"status":"error","message":"Failed to serialize response"}"#.to_string());
+    let json = serde_json::to_string(&response).unwrap_or_else(|_| {
+        r#"{"status":"error","message":"Failed to serialize response"}"#.to_string()
+    });
 
     Ok(Response::builder()
         .status(StatusCode::OK)
@@ -209,8 +210,9 @@ pub fn create_simple_success_response(message: &str) -> Result<impl Reply, Infal
         "request_id": Uuid::new_v4().to_string(),
     });
 
-    let json = serde_json::to_string(&response)
-        .unwrap_or_else(|_| r#"{"status":"error","message":"Failed to serialize response"}"#.to_string());
+    let json = serde_json::to_string(&response).unwrap_or_else(|_| {
+        r#"{"status":"error","message":"Failed to serialize response"}"#.to_string()
+    });
 
     Ok(Response::builder()
         .status(StatusCode::OK)
@@ -227,40 +229,20 @@ pub fn with_request_id() -> impl warp::Filter<Extract = (String,), Error = Infal
 
 /// Helper function to log errors with context
 pub fn log_error(error: &dyn std::error::Error, context: &str, request_id: &str) {
-    tracing::error!(
-        "Error in {} [{}]: {}",
-        context,
-        request_id,
-        error
-    );
+    tracing::error!("Error in {} [{}]: {}", context, request_id, error);
 }
 
 /// Helper function to log anyhow errors with context
 pub fn log_anyhow_error(error: &anyhow::Error, context: &str, request_id: &str) {
-    tracing::error!(
-        "Error in {} [{}]: {}",
-        context,
-        request_id,
-        error
-    );
+    tracing::error!("Error in {} [{}]: {}", context, request_id, error);
 }
 
 /// Helper function to log AppError with context
 pub fn log_app_error(error: &crate::errors::AppError, context: &str, request_id: &str) {
-    tracing::error!(
-        "Error in {} [{}]: {}",
-        context,
-        request_id,
-        error
-    );
+    tracing::error!("Error in {} [{}]: {}", context, request_id, error);
 }
 
 /// Helper function to log warnings with context
 pub fn log_warning(message: &str, context: &str, request_id: &str) {
-    tracing::warn!(
-        "Warning in {} [{}]: {}",
-        context,
-        request_id,
-        message
-    );
+    tracing::warn!("Warning in {} [{}]: {}", context, request_id, message);
 }

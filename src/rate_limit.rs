@@ -32,21 +32,21 @@ impl RateLimiter {
             config,
         }
     }
-    
+
     pub async fn check_async(&self) -> Result<(), RateLimitError> {
         let mut tokens = self.tokens.write().await;
         let mut last_refill = self.last_refill.write().await;
-        
+
         // Refill tokens based on time elapsed
         let now = Instant::now();
         let elapsed = now.duration_since(*last_refill);
         let tokens_to_add = (elapsed.as_secs_f64() * self.config.requests_per_second as f64) as u32;
-        
+
         if tokens_to_add > 0 {
             *tokens = (*tokens + tokens_to_add).min(self.config.burst_size);
             *last_refill = now;
         }
-        
+
         // Check if we have tokens available
         if *tokens > 0 {
             *tokens -= 1;

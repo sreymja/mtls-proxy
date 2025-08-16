@@ -1,16 +1,16 @@
 use mtls_proxy::{Config, ProxyServer};
+use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
-use tokio::time::sleep;
 use tempfile::TempDir;
-use std::fs;
+use tokio::time::sleep;
 
 #[tokio::test]
 async fn test_mtls_certificate_validation() {
     // Skip this test if certificates don't exist
     let cert_path = PathBuf::from("certs/client.crt");
     let key_path = PathBuf::from("certs/client.key");
-    
+
     if !cert_path.exists() || !key_path.exists() {
         println!("Skipping mTLS certificate validation test - certificates not found");
         return;
@@ -24,7 +24,7 @@ async fn test_mtls_certificate_validation() {
     config.tls.verify_hostname = true;
     config.target.base_url = "https://localhost:8443".to_string();
     config.target.timeout_secs = 5;
-    
+
     // Use test logging
     config.logging.sqlite_db_path = PathBuf::from("test_security_logs.db");
     config.logging.log_dir = PathBuf::from("test_security_logs");
@@ -36,7 +36,10 @@ async fn test_mtls_certificate_validation() {
             println!("✅ Valid certificate test passed");
         }
         Err(e) => {
-            println!("Failed to create proxy server with valid certificates: {}", e);
+            println!(
+                "Failed to create proxy server with valid certificates: {}",
+                e
+            );
             // Skip this test if proxy creation fails
             return;
         }
@@ -48,13 +51,16 @@ async fn test_mtls_certificate_validation() {
     config_invalid.tls.client_key_path = PathBuf::from("nonexistent/key.key");
     config_invalid.tls.ca_cert_path = Some(PathBuf::from("nonexistent/ca.crt"));
     config_invalid.target.base_url = "https://localhost:8443".to_string();
-    
+
     let proxy_invalid = ProxyServer::new(config_invalid).await;
     // Should fail gracefully with invalid certificates
-    assert!(proxy_invalid.is_err() || proxy_invalid.is_ok(), "Should handle invalid certificates gracefully");
+    assert!(
+        proxy_invalid.is_err() || proxy_invalid.is_ok(),
+        "Should handle invalid certificates gracefully"
+    );
 
     println!("✅ mTLS certificate validation tests passed");
-    
+
     // Clean up test files
     let _ = std::fs::remove_file("test_security_logs.db");
     let _ = std::fs::remove_dir_all("test_security_logs");
@@ -65,7 +71,7 @@ async fn test_input_validation() {
     // Skip this test if certificates don't exist
     let cert_path = PathBuf::from("certs/client.crt");
     let key_path = PathBuf::from("certs/client.key");
-    
+
     if !cert_path.exists() || !key_path.exists() {
         println!("Skipping input validation test - certificates not found");
         return;
@@ -79,7 +85,7 @@ async fn test_input_validation() {
     config.tls.verify_hostname = false;
     config.target.base_url = "https://localhost:8443".to_string();
     config.target.timeout_secs = 5;
-    
+
     // Use test logging
     config.logging.sqlite_db_path = PathBuf::from("test_input_validation_logs.db");
     config.logging.log_dir = PathBuf::from("test_input_validation_logs");
@@ -184,7 +190,7 @@ async fn test_input_validation() {
 
     // Clean up
     proxy_handle.abort();
-    
+
     // Clean up test files
     let _ = std::fs::remove_file("test_input_validation_logs.db");
     let _ = std::fs::remove_dir_all("test_input_validation_logs");
@@ -196,39 +202,41 @@ async fn test_file_path_security() {
     let temp_dir = TempDir::new().unwrap();
     let certs_dir = temp_dir.path().join("certs");
     fs::create_dir_all(&certs_dir).unwrap();
-    
+
     // Create a test certificate file
     let test_cert_content = b"-----BEGIN CERTIFICATE-----\nMIIDiDCCAnCgAwIBAgIUZtVzwAULNmpRMhGZoCZ93kGnvewwDQYJKoZIhvcNAQEL\nBQAwXDELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMRYwFAYDVQQHDA1TYW4gRnJh\n-----END CERTIFICATE-----";
     fs::write(certs_dir.join("test.crt"), test_cert_content).unwrap();
-    
+
     // Test path traversal attempt in filename
     let malicious_filename = "../../../etc/passwd";
     let malicious_path = certs_dir.join(malicious_filename);
-    
+
     // Verify that the malicious path doesn't actually escape the certs directory
     let canonical_certs = certs_dir.canonicalize().unwrap();
     let canonical_malicious = malicious_path.canonicalize();
-    
+
     match canonical_malicious {
         Ok(path) => {
             // If canonicalization succeeds, verify it doesn't escape the certs directory
-            assert!(!path.starts_with(&canonical_certs) || path.starts_with(&canonical_certs), 
-                   "Path traversal should be prevented");
+            assert!(
+                !path.starts_with(&canonical_certs) || path.starts_with(&canonical_certs),
+                "Path traversal should be prevented"
+            );
         }
         Err(_) => {
             // Canonicalization failure is also acceptable
             println!("✅ Path traversal prevention - canonicalization failed");
         }
     }
-    
+
     println!("✅ File path security test passed");
 
     // Test 2: Symlink attack prevention
     let symlink_target = temp_dir.path().join("symlink_target");
     fs::write(&symlink_target, "sensitive data").unwrap();
-    
+
     let symlink_path = certs_dir.join("symlink.crt");
-    
+
     // Create a symlink (this might fail on some systems, which is fine)
     #[cfg(unix)]
     {
@@ -245,7 +253,9 @@ async fn test_file_path_security() {
                         if path.starts_with(&canonical_certs) {
                             println!("✅ Symlink security - symlink within certs directory");
                         } else {
-                            println!("⚠️  Symlink security - symlink points outside certs directory");
+                            println!(
+                                "⚠️  Symlink security - symlink points outside certs directory"
+                            );
                         }
                     } else {
                         // For relative paths, this is acceptable
@@ -260,12 +270,12 @@ async fn test_file_path_security() {
             println!("✅ Symlink security - symlink creation failed (acceptable)");
         }
     }
-    
+
     #[cfg(not(unix))]
     {
         println!("✅ Symlink security - not applicable on this platform");
     }
-    
+
     println!("✅ Symlink security test passed");
 }
 
@@ -274,7 +284,7 @@ async fn test_configuration_file_security() {
     // Test 1: Configuration file permissions
     let temp_dir = TempDir::new().unwrap();
     let config_file = temp_dir.path().join("config.toml");
-    
+
     // Create a test configuration file
     let config_content = r#"
 [server]
@@ -291,9 +301,9 @@ verify_hostname = true
 base_url = "https://example.com"
 timeout_secs = 60
 "#;
-    
+
     fs::write(&config_file, config_content).unwrap();
-    
+
     // Test file permissions (Unix-like systems)
     #[cfg(unix)]
     {
@@ -301,30 +311,33 @@ timeout_secs = 60
         let metadata = fs::metadata(&config_file).unwrap();
         let permissions = metadata.permissions();
         let mode = permissions.mode();
-        
+
         // Check that the file is not world-readable (should be 600 or 640)
         let world_readable = (mode & 0o004) != 0;
         let world_writable = (mode & 0o002) != 0;
-        
-        assert!(!world_writable, "Configuration file should not be world-writable");
+
+        assert!(
+            !world_writable,
+            "Configuration file should not be world-writable"
+        );
         println!("✅ Configuration file permissions test passed");
     }
-    
+
     // Test 2: Configuration file security
     // Verify that the configuration file was created with appropriate content
     let config_content_read = fs::read_to_string(&config_file).unwrap();
     assert!(config_content_read.contains("127.0.0.1"));
     assert!(config_content_read.contains("8443"));
     assert!(config_content_read.contains("https://example.com"));
-    
+
     println!("✅ Configuration file content validation test passed");
-    
+
     // Test 3: Configuration file integrity
     // Verify that the file contains expected TOML structure
     assert!(config_content_read.contains("[server]"));
     assert!(config_content_read.contains("[tls]"));
     assert!(config_content_read.contains("[target]"));
-    
+
     println!("✅ Configuration file structure validation test passed");
 }
 
@@ -334,36 +347,43 @@ async fn test_certificate_security() {
     let temp_dir = TempDir::new().unwrap();
     let certs_dir = temp_dir.path().join("certs");
     fs::create_dir_all(&certs_dir).unwrap();
-    
+
     // Valid certificate
     let valid_cert = b"-----BEGIN CERTIFICATE-----\nMIIDiDCCAnCgAwIBAgIUZtVzwAULNmpRMhGZoCZ93kGnvewwDQYJKoZIhvcNAQEL\nBQAwXDELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMRYwFAYDVQQHDA1TYW4gRnJh\n-----END CERTIFICATE-----";
-    
+
     // Invalid certificate (not PEM format)
     let invalid_cert = b"This is not a valid certificate";
-    
+
     // Test valid certificate
     let valid_cert_path = certs_dir.join("valid.crt");
     fs::write(&valid_cert_path, valid_cert).unwrap();
-    
+
     // Test invalid certificate
     let invalid_cert_path = certs_dir.join("invalid.crt");
     fs::write(&invalid_cert_path, invalid_cert).unwrap();
-    
+
     // Verify that invalid certificates are detected
     let valid_content = fs::read(&valid_cert_path).unwrap();
     let invalid_content = fs::read(&invalid_cert_path).unwrap();
-    
+
     // Check for PEM format
-    let is_valid_pem = valid_content.starts_with(b"-----BEGIN CERTIFICATE-----") && 
-                      valid_content.windows(25).any(|window| window == b"-----END CERTIFICATE-----");
-    let is_invalid_pem = invalid_content.starts_with(b"-----BEGIN CERTIFICATE-----") && 
-                        invalid_content.windows(25).any(|window| window == b"-----END CERTIFICATE-----");
-    
+    let is_valid_pem = valid_content.starts_with(b"-----BEGIN CERTIFICATE-----")
+        && valid_content
+            .windows(25)
+            .any(|window| window == b"-----END CERTIFICATE-----");
+    let is_invalid_pem = invalid_content.starts_with(b"-----BEGIN CERTIFICATE-----")
+        && invalid_content
+            .windows(25)
+            .any(|window| window == b"-----END CERTIFICATE-----");
+
     assert!(is_valid_pem, "Valid certificate should be in PEM format");
-    assert!(!is_invalid_pem, "Invalid certificate should not be in PEM format");
-    
+    assert!(
+        !is_invalid_pem,
+        "Invalid certificate should not be in PEM format"
+    );
+
     println!("✅ Certificate content validation test passed");
-    
+
     // Test 2: Certificate file permissions
     #[cfg(unix)]
     {
@@ -371,14 +391,17 @@ async fn test_certificate_security() {
         let metadata = fs::metadata(&valid_cert_path).unwrap();
         let permissions = metadata.permissions();
         let mode = permissions.mode();
-        
+
         // Check that certificate files have appropriate permissions
         let _world_readable = (mode & 0o004) != 0;
         let world_writable = (mode & 0o002) != 0;
-        
+
         // Certificate files should not be world-writable
-        assert!(!world_writable, "Certificate file should not be world-writable");
-        
+        assert!(
+            !world_writable,
+            "Certificate file should not be world-writable"
+        );
+
         println!("✅ Certificate file permissions test passed");
     }
 }
@@ -388,7 +411,7 @@ async fn test_authentication_security() {
     // Test 1: Unauthorized access attempts
     let cert_path = PathBuf::from("certs/client.crt");
     let key_path = PathBuf::from("certs/client.key");
-    
+
     if !cert_path.exists() || !key_path.exists() {
         println!("Skipping authentication security test - certificates not found");
         return;
@@ -402,7 +425,7 @@ async fn test_authentication_security() {
     config.tls.verify_hostname = false;
     config.target.base_url = "https://localhost:8443".to_string();
     config.target.timeout_secs = 5;
-    
+
     // Use test logging
     config.logging.sqlite_db_path = PathBuf::from("test_auth_security_logs.db");
     config.logging.log_dir = PathBuf::from("test_auth_security_logs");
@@ -451,14 +474,17 @@ async fn test_authentication_security() {
                 println!("✅ Authentication test for {} passed", endpoint);
             }
             Err(_) => {
-                println!("✅ Authentication test for {} passed - request rejected", endpoint);
+                println!(
+                    "✅ Authentication test for {} passed - request rejected",
+                    endpoint
+                );
             }
         }
     }
 
     // Clean up
     proxy_handle.abort();
-    
+
     // Clean up test files
     let _ = std::fs::remove_file("test_auth_security_logs.db");
     let _ = std::fs::remove_dir_all("test_auth_security_logs");

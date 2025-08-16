@@ -36,22 +36,28 @@ pub struct LogManager {
 }
 
 impl LogManager {
-    pub fn new(db_path: &Path, log_dir: &str, max_log_size_mb: u64, retention_days: u32, compression_enabled: bool) -> Result<Self> {
+    pub fn new(
+        db_path: &Path,
+        log_dir: &str,
+        max_log_size_mb: u64,
+        retention_days: u32,
+        compression_enabled: bool,
+    ) -> Result<Self> {
         // Ensure log directory exists
         std::fs::create_dir_all(log_dir)?;
-        
+
         // Open SQLite connection with WAL mode for better concurrency
         let conn = Connection::open_with_flags(
             db_path,
             OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_CREATE,
         )?;
-        
+
         // Enable WAL mode for better concurrency
         let _: String = conn.query_row("PRAGMA journal_mode=WAL", [], |row| row.get(0))?;
-        
+
         // Create tables if they don't exist
         Self::create_tables(&conn)?;
-        
+
         Ok(Self {
             conn: Arc::new(Mutex::new(conn)),
             log_dir: log_dir.to_string(),
@@ -93,7 +99,7 @@ impl LogManager {
             "CREATE INDEX IF NOT EXISTS idx_requests_timestamp ON requests (timestamp)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_responses_timestamp ON responses (timestamp)",
             [],
@@ -104,7 +110,7 @@ impl LogManager {
 
     pub async fn log_request(&self, request: RequestLog) -> Result<()> {
         let conn = self.conn.lock().await;
-        
+
         conn.execute(
             "INSERT INTO requests (id, timestamp, method, uri, headers, body_size, client_ip) 
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
@@ -124,7 +130,7 @@ impl LogManager {
 
     pub async fn log_response(&self, response: ResponseLog) -> Result<()> {
         let conn = self.conn.lock().await;
-        
+
         conn.execute(
             "INSERT INTO responses (request_id, timestamp, status_code, headers, body_size, duration_ms) 
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
@@ -144,13 +150,13 @@ impl LogManager {
     pub async fn cleanup_old_logs(&self) -> Result<()> {
         let cutoff_date = Utc::now() - chrono::Duration::days(self.retention_days as i64);
         let conn = self.conn.lock().await;
-        
+
         // Delete old responses first (due to foreign key constraint)
         conn.execute(
             "DELETE FROM responses WHERE timestamp < ?",
             [&cutoff_date.to_rfc3339()],
         )?;
-        
+
         // Delete old requests
         conn.execute(
             "DELETE FROM requests WHERE timestamp < ?",
@@ -165,14 +171,14 @@ impl LogManager {
 
     pub async fn get_request_by_id(&self, request_id: &str) -> Result<Option<RequestLog>> {
         let conn = self.conn.lock().await;
-        
+
         let mut stmt = conn.prepare(
             "SELECT id, timestamp, method, uri, headers, body_size, client_ip 
-             FROM requests WHERE id = ?"
+             FROM requests WHERE id = ?",
         )?;
-        
+
         let mut rows = stmt.query([request_id])?;
-        
+
         if let Some(row) = rows.next()? {
             let timestamp: String = row.get(1)?;
             Ok(Some(RequestLog {
@@ -189,16 +195,19 @@ impl LogManager {
         }
     }
 
-    pub async fn get_response_by_request_id(&self, request_id: &str) -> Result<Option<ResponseLog>> {
+    pub async fn get_response_by_request_id(
+        &self,
+        request_id: &str,
+    ) -> Result<Option<ResponseLog>> {
         let conn = self.conn.lock().await;
-        
+
         let mut stmt = conn.prepare(
             "SELECT request_id, timestamp, status_code, headers, body_size, duration_ms 
-             FROM responses WHERE request_id = ?"
+             FROM responses WHERE request_id = ?",
         )?;
-        
+
         let mut rows = stmt.query([request_id])?;
-        
+
         if let Some(row) = rows.next()? {
             let timestamp: String = row.get(1)?;
             Ok(Some(ResponseLog {
@@ -223,53 +232,55 @@ impl LogManager {
         limit: Option<usize>,
     ) -> Result<Vec<(RequestLog, Option<ResponseLog>)>> {
         let conn = self.conn.lock().await;
-        
+
         let mut query = String::from(
             "SELECT r.id, r.timestamp, r.method, r.uri, r.headers, r.body_size, r.client_ip,
                     resp.timestamp, resp.status_code, resp.headers, resp.body_size, resp.duration_ms
              FROM requests r
              LEFT JOIN responses resp ON r.id = resp.request_id
-             WHERE 1=1"
+             WHERE 1=1",
         );
-        
+
         let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
         let mut param_count = 0;
-        
+
         if let Some(start) = start_time {
             param_count += 1;
             query.push_str(&format!(" AND r.timestamp >= ?{}", param_count));
             params.push(Box::new(start.to_rfc3339()));
         }
-        
+
         if let Some(end) = end_time {
             param_count += 1;
             query.push_str(&format!(" AND r.timestamp <= ?{}", param_count));
             params.push(Box::new(end.to_rfc3339()));
         }
-        
+
         if let Some(m) = method {
             param_count += 1;
             query.push_str(&format!(" AND r.method = ?{}", param_count));
             params.push(Box::new(m.to_string()));
         }
-        
+
         if let Some(status) = status_code {
             param_count += 1;
             query.push_str(&format!(" AND resp.status_code = ?{}", param_count));
             params.push(Box::new(status as i64));
         }
-        
+
         query.push_str(" ORDER BY r.timestamp DESC");
-        
+
         if let Some(l) = limit {
             param_count += 1;
             query.push_str(&format!(" LIMIT ?{}", param_count));
             params.push(Box::new(l as i64));
         }
-        
+
         let mut stmt = conn.prepare(&query)?;
-        let mut rows = stmt.query(rusqlite::params_from_iter(params.iter().map(|p| p.as_ref())))?;
-        
+        let mut rows = stmt.query(rusqlite::params_from_iter(
+            params.iter().map(|p| p.as_ref()),
+        ))?;
+
         let mut results = Vec::new();
         while let Some(row) = rows.next()? {
             let req_timestamp: String = row.get(1)?;
@@ -282,7 +293,7 @@ impl LogManager {
                 body_size: row.get(5)?,
                 client_ip: row.get(6)?,
             };
-            
+
             let response = if let Ok(resp_timestamp) = row.get::<_, String>(7) {
                 Some(ResponseLog {
                     request_id: request.id.clone(),
@@ -295,10 +306,10 @@ impl LogManager {
             } else {
                 None
             };
-            
+
             results.push((request, response));
         }
-        
+
         Ok(results)
     }
 }

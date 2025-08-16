@@ -10,7 +10,6 @@ pub struct Config {
     pub logging: LoggingConfig,
     pub target: TargetConfig,
     pub ui: Option<UiConfig>,
-
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,8 +55,6 @@ pub struct UiConfig {
     pub host: Option<String>,
 }
 
-
-
 impl Config {
     pub fn load() -> Result<Self> {
         let config = ConfigFile::builder()
@@ -67,10 +64,10 @@ impl Config {
             .build()?;
 
         let config: Config = config.try_deserialize()?;
-        
+
         // Validate configuration
         config.validate()?;
-        
+
         Ok(config)
     }
 
@@ -94,10 +91,16 @@ impl Config {
 
         // Validate TLS configuration
         if !self.tls.client_cert_path.exists() {
-            anyhow::bail!("Client certificate file does not exist: {}", self.tls.client_cert_path.display());
+            anyhow::bail!(
+                "Client certificate file does not exist: {}",
+                self.tls.client_cert_path.display()
+            );
         }
         if !self.tls.client_key_path.exists() {
-            anyhow::bail!("Client key file does not exist: {}", self.tls.client_key_path.display());
+            anyhow::bail!(
+                "Client key file does not exist: {}",
+                self.tls.client_key_path.display()
+            );
         }
         if let Some(ref ca_path) = self.tls.ca_cert_path {
             if !ca_path.exists() {
@@ -164,7 +167,6 @@ impl Default for Config {
                 port: None,
                 host: None,
             }),
-
         }
     }
 }

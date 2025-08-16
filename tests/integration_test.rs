@@ -8,7 +8,7 @@ async fn test_proxy_basic_functionality() {
     // Skip this test if certificates don't exist
     let cert_path = PathBuf::from("certs/client.crt");
     let key_path = PathBuf::from("certs/client.key");
-    
+
     if !cert_path.exists() || !key_path.exists() {
         println!("Skipping integration test - certificates not found");
         return;
@@ -22,7 +22,7 @@ async fn test_proxy_basic_functionality() {
     config.tls.verify_hostname = false;
     config.target.base_url = "https://localhost:8443".to_string();
     config.target.timeout_secs = 5; // Short timeout for testing
-    
+
     // Use test logging
     config.logging.sqlite_db_path = PathBuf::from("test_integration_logs.db");
     config.logging.log_dir = PathBuf::from("test_integration_logs");
@@ -89,7 +89,7 @@ async fn test_proxy_basic_functionality() {
 
     // Clean up
     proxy_handle.abort();
-    
+
     // Clean up test files
     let _ = std::fs::remove_file("test_integration_logs.db");
     let _ = std::fs::remove_dir_all("test_integration_logs");
@@ -101,7 +101,7 @@ async fn test_proxy_with_mock_server() {
     // For now, just test that the proxy can be created with valid config
     let cert_path = PathBuf::from("certs/client.crt");
     let key_path = PathBuf::from("certs/client.key");
-    
+
     if !cert_path.exists() || !key_path.exists() {
         println!("Skipping mock server test - certificates not found");
         return;
@@ -113,7 +113,7 @@ async fn test_proxy_with_mock_server() {
     config.tls.ca_cert_path = Some(PathBuf::from("certs/ca.crt"));
     config.tls.verify_hostname = false;
     config.target.base_url = "https://localhost:8443".to_string();
-    
+
     let proxy = ProxyServer::new(config).await;
     match proxy {
         Ok(_) => {
@@ -132,7 +132,7 @@ async fn test_configuration_api_endpoints() {
     // Skip this test if certificates don't exist
     let cert_path = PathBuf::from("certs/client.crt");
     let key_path = PathBuf::from("certs/client.key");
-    
+
     if !cert_path.exists() || !key_path.exists() {
         println!("Skipping configuration API test - certificates not found");
         return;
@@ -146,7 +146,7 @@ async fn test_configuration_api_endpoints() {
     config.tls.verify_hostname = false;
     config.target.base_url = "https://localhost:8443".to_string();
     config.target.timeout_secs = 5;
-    
+
     // Use test logging
     config.logging.sqlite_db_path = PathBuf::from("test_config_api_logs.db");
     config.logging.log_dir = PathBuf::from("test_config_api_logs");
@@ -220,7 +220,7 @@ async fn test_configuration_api_endpoints() {
 
     // Clean up
     proxy_handle.abort();
-    
+
     // Clean up test files
     let _ = std::fs::remove_file("test_config_api_logs.db");
     let _ = std::fs::remove_dir_all("test_config_api_logs");
@@ -231,7 +231,7 @@ async fn test_error_handling_scenarios() {
     // Skip this test if certificates don't exist
     let cert_path = PathBuf::from("certs/client.crt");
     let key_path = PathBuf::from("certs/client.key");
-    
+
     if !cert_path.exists() || !key_path.exists() {
         println!("Skipping error handling test - certificates not found");
         return;
@@ -245,7 +245,7 @@ async fn test_error_handling_scenarios() {
     config.tls.verify_hostname = false;
     config.target.base_url = "https://localhost:8443".to_string();
     config.target.timeout_secs = 5;
-    
+
     // Use test logging
     config.logging.sqlite_db_path = PathBuf::from("test_error_logs.db");
     config.logging.log_dir = PathBuf::from("test_error_logs");
@@ -317,7 +317,7 @@ async fn test_error_handling_scenarios() {
 
     // Clean up
     proxy_handle.abort();
-    
+
     // Clean up test files
     let _ = std::fs::remove_file("test_error_logs.db");
     let _ = std::fs::remove_dir_all("test_error_logs");
@@ -328,7 +328,7 @@ async fn test_audit_logging_integration() {
     // Skip this test if certificates don't exist
     let cert_path = PathBuf::from("certs/client.crt");
     let key_path = PathBuf::from("certs/client.key");
-    
+
     if !cert_path.exists() || !key_path.exists() {
         println!("Skipping audit logging test - certificates not found");
         return;
@@ -342,7 +342,7 @@ async fn test_audit_logging_integration() {
     config.tls.verify_hostname = false;
     config.target.base_url = "https://localhost:8443".to_string();
     config.target.timeout_secs = 5;
-    
+
     // Use test logging
     config.logging.sqlite_db_path = PathBuf::from("test_audit_logs.db");
     config.logging.log_dir = PathBuf::from("test_audit_logs");
@@ -408,7 +408,7 @@ async fn test_audit_logging_integration() {
 
     // Clean up
     proxy_handle.abort();
-    
+
     // Clean up test files
     let _ = std::fs::remove_file("test_audit_logs.db");
     let _ = std::fs::remove_dir_all("test_audit_logs");

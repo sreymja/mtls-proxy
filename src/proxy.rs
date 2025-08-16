@@ -1,21 +1,23 @@
 use anyhow::Result;
-use warp::{
-    Filter,
-    http::{Request, Response, StatusCode},
-};
+use chrono::Utc;
 use hyper::body::Body;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tokio::time::Duration;
-use chrono::Utc;
-use uuid::Uuid;
 use tokio::signal;
+use tokio::time::Duration;
+use uuid::Uuid;
+use warp::{
+    http::{Request, Response, StatusCode},
+    Filter,
+};
 
 use crate::audit::AuditLogger;
 use crate::config::Config;
-use crate::config_manager::{ConfigManager, ConfigUpdateRequest, CertificateUpload};
-use crate::error_handler::{create_simple_success_response, handle_rejection, log_anyhow_error, log_app_error, log_error};
-use crate::errors::{ErrorCode, filesystem_error, internal_error, validation_error};
+use crate::config_manager::{CertificateUpload, ConfigManager, ConfigUpdateRequest};
+use crate::error_handler::{
+    create_simple_success_response, handle_rejection, log_anyhow_error, log_app_error, log_error,
+};
+use crate::errors::{filesystem_error, internal_error, validation_error, ErrorCode};
 use crate::logging::LogManager;
 use crate::metrics::Metrics;
 use crate::rate_limit::{RateLimiter, RateLimiterConfig};
@@ -80,8 +82,6 @@ impl ProxyServer {
         };
         let rate_limiter = RateLimiter::new(rate_limiter_config);
 
-
-
         // Initialize config manager
         let config_manager = ConfigManager::new(config.clone());
 
@@ -105,10 +105,7 @@ impl ProxyServer {
     }
 
     pub async fn start(&self) -> Result<()> {
-        let addr = SocketAddr::new(
-            self.config.server.host.parse()?,
-            self.config.server.port,
-        );
+        let addr = SocketAddr::new(self.config.server.host.parse()?, self.config.server.port);
 
         let state = AppState {
             log_manager: Arc::new(self.log_manager.clone()),
@@ -129,13 +126,12 @@ impl ProxyServer {
         tracing::info!("Starting proxy server on {}", addr);
 
         // Start the server with graceful shutdown
-        let (_, server) = warp::serve(routes)
-            .bind_with_graceful_shutdown(addr, async {
-                signal::ctrl_c()
-                    .await
-                    .expect("Failed to listen for ctrl+c signal");
-                tracing::info!("Received shutdown signal, starting graceful shutdown...");
-            });
+        let (_, server) = warp::serve(routes).bind_with_graceful_shutdown(addr, async {
+            signal::ctrl_c()
+                .await
+                .expect("Failed to listen for ctrl+c signal");
+            tracing::info!("Received shutdown signal, starting graceful shutdown...");
+        });
 
         server.await;
         tracing::info!("Server shutdown complete");
@@ -199,7 +195,9 @@ fn create_routes(state: AppState) -> impl Filter<Extract = impl warp::Reply> + C
         .and(warp::post())
         .and(warp::body::json())
         .and(state_filter.clone())
-        .and_then(|config_update: ConfigUpdateRequest, state: AppState| api_config_update_handler(state, config_update));
+        .and_then(|config_update: ConfigUpdateRequest, state: AppState| {
+            api_config_update_handler(state, config_update)
+        });
 
     let api_config_validate_route = warp::path!("ui" / "api" / "config" / "validate")
         .and(warp::post())
@@ -211,19 +209,24 @@ fn create_routes(state: AppState) -> impl Filter<Extract = impl warp::Reply> + C
         .and(warp::body::content_length_limit(10 * 1024 * 1024)) // 10MB limit
         .and(warp::multipart::form())
         .and(state_filter.clone())
-        .and_then(|form: warp::multipart::FormData, state: AppState| async move {
-            api_certificates_upload_multipart_handler(state, form).await
-        });
+        .and_then(
+            |form: warp::multipart::FormData, state: AppState| async move {
+                api_certificates_upload_multipart_handler(state, form).await
+            },
+        );
 
     let api_certificates_list_route = warp::path!("ui" / "api" / "certificates" / "list")
         .and(warp::get())
         .and(state_filter.clone())
         .and_then(api_certificates_list_handler);
 
-    let api_certificates_delete_route = warp::path!("ui" / "api" / "certificates" / "delete" / String)
-        .and(warp::delete())
-        .and(state_filter.clone())
-        .and_then(|filename: String, state: AppState| api_certificates_delete_handler(state, filename));
+    let api_certificates_delete_route =
+        warp::path!("ui" / "api" / "certificates" / "delete" / String)
+            .and(warp::delete())
+            .and(state_filter.clone())
+            .and_then(|filename: String, state: AppState| {
+                api_certificates_delete_handler(state, filename)
+            });
 
     // Audit API routes
     let api_audit_logs_route = warp::path!("ui" / "api" / "audit" / "logs")
@@ -243,15 +246,13 @@ fn create_routes(state: AppState) -> impl Filter<Extract = impl warp::Reply> + C
         .and_then(metrics_handler);
 
     // Legacy health route
-    let legacy_health_route = warp::path!("health")
-        .and(warp::get())
-        .map(|| {
-            Response::builder()
-                .status(StatusCode::OK)
-                .header("Content-Type", "application/json")
-                .body(Body::from(r#"{"status":"healthy","service":"mtls-proxy"}"#))
-                .unwrap()
-        });
+    let legacy_health_route = warp::path!("health").and(warp::get()).map(|| {
+        Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "application/json")
+            .body(Body::from(r#"{"status":"healthy","service":"mtls-proxy"}"#))
+            .unwrap()
+    });
 
     // Proxy route (catch-all) - This is the main proxy functionality
     let proxy_route = warp::any()
@@ -275,22 +276,20 @@ fn create_routes(state: AppState) -> impl Filter<Extract = impl warp::Reply> + C
         .or(api_config_current_route)
         .or(api_config_update_route)
         .or(api_config_validate_route)
-        .or(api_certificates_upload_route)  // Must come before proxy_route
+        .or(api_certificates_upload_route) // Must come before proxy_route
         .or(api_certificates_list_route)
         .or(api_certificates_delete_route)
         .or(api_audit_logs_route)
         .or(api_audit_stats_route)
         .or(metrics_route)
         .or(legacy_health_route)
-        .or(proxy_route)  // Catch-all route must be last
+        .or(proxy_route) // Catch-all route must be last
         .recover(handle_rejection)
 }
 
-async fn dashboard_handler(
-    _state: AppState,
-) -> Result<impl warp::Reply, warp::Rejection> {
+async fn dashboard_handler(_state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
     let dashboard_html = include_str!("ui/templates/dashboard.html");
-    
+
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "text/html")
@@ -298,11 +297,9 @@ async fn dashboard_handler(
         .unwrap())
 }
 
-async fn config_handler(
-    _state: AppState,
-) -> Result<impl warp::Reply, warp::Rejection> {
+async fn config_handler(_state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
     let config_html = include_str!("ui/templates/config.html");
-    
+
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "text/html")
@@ -310,11 +307,9 @@ async fn config_handler(
         .unwrap())
 }
 
-async fn logs_handler(
-    _state: AppState,
-) -> Result<impl warp::Reply, warp::Rejection> {
+async fn logs_handler(_state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
     let logs_html = include_str!("ui/templates/logs.html");
-    
+
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "text/html")
@@ -322,11 +317,9 @@ async fn logs_handler(
         .unwrap())
 }
 
-async fn audit_handler(
-    _state: AppState,
-) -> Result<impl warp::Reply, warp::Rejection> {
+async fn audit_handler(_state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
     let audit_html = include_str!("ui/templates/audit.html");
-    
+
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "text/html")
@@ -334,9 +327,7 @@ async fn audit_handler(
         .unwrap())
 }
 
-async fn health_handler(
-    state: AppState,
-) -> Result<impl warp::Reply, warp::Rejection> {
+async fn health_handler(state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
     let req = Request::builder()
         .method("GET")
         .uri("/ui/health")
@@ -350,9 +341,7 @@ async fn health_handler(
     }
 }
 
-async fn api_logs_handler(
-    state: AppState,
-) -> Result<impl warp::Reply, warp::Rejection> {
+async fn api_logs_handler(state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
     let req = Request::builder()
         .method("GET")
         .uri("/ui/api/logs")
@@ -365,9 +354,7 @@ async fn api_logs_handler(
     }
 }
 
-async fn api_stats_handler(
-    state: AppState,
-) -> Result<impl warp::Reply, warp::Rejection> {
+async fn api_stats_handler(state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
     let req = Request::builder()
         .method("GET")
         .uri("/ui/api/stats")
@@ -381,14 +368,11 @@ async fn api_stats_handler(
 }
 
 // Configuration API handlers
-async fn api_config_current_handler(
-    state: AppState,
-) -> Result<impl warp::Reply, warp::Rejection> {
+async fn api_config_current_handler(state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
     match state.config_manager.get_current_config().await {
         Ok(config) => {
-            let response = serde_json::to_string(&config)
-                .map_err(|_| warp::reject::not_found())?;
-            
+            let response = serde_json::to_string(&config).map_err(|_| warp::reject::not_found())?;
+
             Ok(Response::builder()
                 .status(StatusCode::OK)
                 .header("Content-Type", "application/json")
@@ -404,7 +388,7 @@ async fn api_config_update_handler(
     config_update: ConfigUpdateRequest,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let request_id = uuid::Uuid::new_v4().to_string();
-    
+
     // Validate input
     if config_update.target_url.is_empty() {
         return Err(warp::reject::custom(validation_error(
@@ -416,7 +400,7 @@ async fn api_config_update_handler(
             }]),
         )));
     }
-    
+
     if config_update.timeout_secs == 0 {
         return Err(warp::reject::custom(validation_error(
             "Timeout must be greater than 0",
@@ -427,20 +411,32 @@ async fn api_config_update_handler(
             }]),
         )));
     }
-    
-    match state.config_manager.update_config(config_update.clone()).await {
+
+    match state
+        .config_manager
+        .update_config(config_update.clone())
+        .await
+    {
         Ok(_) => {
             // Log audit event
-            if let Err(e) = state.audit_logger.log_event(
-                crate::audit::AuditEventType::ConfigUpdate,
-                format!("Configuration updated: target_url={}, timeout_secs={}, max_connections={}", 
-                    config_update.target_url, config_update.timeout_secs, config_update.max_connections),
-                None,
-                None,
-            ).await {
+            if let Err(e) = state
+                .audit_logger
+                .log_event(
+                    crate::audit::AuditEventType::ConfigUpdate,
+                    format!(
+                        "Configuration updated: target_url={}, timeout_secs={}, max_connections={}",
+                        config_update.target_url,
+                        config_update.timeout_secs,
+                        config_update.max_connections
+                    ),
+                    None,
+                    None,
+                )
+                .await
+            {
                 log_anyhow_error(&e, "audit_logging", &request_id);
             }
-            
+
             Ok(create_simple_success_response("Configuration updated successfully").unwrap())
         }
         Err(e) => {
@@ -450,16 +446,14 @@ async fn api_config_update_handler(
     }
 }
 
-async fn api_config_validate_handler(
-    state: AppState,
-) -> Result<impl warp::Reply, warp::Rejection> {
+async fn api_config_validate_handler(state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
     match state.config_manager.validate_config().await {
         Ok(_) => {
             let response = serde_json::json!({
                 "status": "success",
                 "message": "Configuration is valid"
             });
-            
+
             Ok(Response::builder()
                 .status(StatusCode::OK)
                 .header("Content-Type", "application/json")
@@ -471,7 +465,7 @@ async fn api_config_validate_handler(
                 "status": "error",
                 "message": format!("Configuration validation failed: {}", e)
             });
-            
+
             Ok(Response::builder()
                 .status(StatusCode::BAD_REQUEST)
                 .header("Content-Type", "application/json")
@@ -481,20 +475,18 @@ async fn api_config_validate_handler(
     }
 }
 
-
-
 async fn api_certificates_upload_multipart_handler(
     state: AppState,
     mut form: warp::multipart::FormData,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     use futures_util::StreamExt;
     use warp::Buf;
-    
+
     let request_id = uuid::Uuid::new_v4().to_string();
     let mut cert_type = None;
     let mut filename = None;
     let mut content = Vec::new();
-    
+
     while let Some(part) = form.next().await {
         let mut part = match part {
             Ok(part) => part,
@@ -507,7 +499,7 @@ async fn api_certificates_upload_multipart_handler(
                 )));
             }
         };
-        
+
         let name = part.name();
         match name {
             "cert_type" => {
@@ -549,7 +541,7 @@ async fn api_certificates_upload_multipart_handler(
             }
         }
     }
-    
+
     // Validate required fields
     let cert_type = match cert_type {
         Some(ct) => ct,
@@ -564,7 +556,7 @@ async fn api_certificates_upload_multipart_handler(
             )));
         }
     };
-    
+
     let filename = match filename {
         Some(f) => f,
         None => {
@@ -578,7 +570,7 @@ async fn api_certificates_upload_multipart_handler(
             )));
         }
     };
-    
+
     if content.is_empty() {
         return Err(warp::reject::custom(validation_error(
             "No file content provided",
@@ -589,7 +581,7 @@ async fn api_certificates_upload_multipart_handler(
             }]),
         )));
     }
-    
+
     // Convert cert_type string to CertificateType enum
     let cert_type_enum = match cert_type.as_str() {
         "client" => crate::config_manager::CertificateType::Client,
@@ -597,37 +589,51 @@ async fn api_certificates_upload_multipart_handler(
         "ca" => crate::config_manager::CertificateType::CA,
         _ => {
             return Err(warp::reject::custom(validation_error(
-                &format!("Invalid cert_type: {}. Must be 'client', 'key', or 'ca'", cert_type),
+                &format!(
+                    "Invalid cert_type: {}. Must be 'client', 'key', or 'ca'",
+                    cert_type
+                ),
                 Some(vec![crate::errors::FieldError {
                     field: "cert_type".to_string(),
-                    message: "Invalid certificate type. Must be 'client', 'key', or 'ca'".to_string(),
+                    message: "Invalid certificate type. Must be 'client', 'key', or 'ca'"
+                        .to_string(),
                     value: Some(cert_type.clone()),
                 }]),
             )));
         }
     };
-    
+
     // Create CertificateUpload struct
     let upload = CertificateUpload {
         cert_type: cert_type_enum,
         filename,
         content,
     };
-    
+
     // Use existing upload logic
-    match state.config_manager.upload_certificate(upload.clone()).await {
+    match state
+        .config_manager
+        .upload_certificate(upload.clone())
+        .await
+    {
         Ok(_) => {
             // Log audit event
-            if let Err(e) = state.audit_logger.log_event(
-                crate::audit::AuditEventType::CertificateUpload,
-                format!("Certificate uploaded: type={}, filename={}", 
-                    upload.cert_type, upload.filename),
-                None,
-                None,
-            ).await {
+            if let Err(e) = state
+                .audit_logger
+                .log_event(
+                    crate::audit::AuditEventType::CertificateUpload,
+                    format!(
+                        "Certificate uploaded: type={}, filename={}",
+                        upload.cert_type, upload.filename
+                    ),
+                    None,
+                    None,
+                )
+                .await
+            {
                 log_anyhow_error(&e, "audit_logging", &request_id);
             }
-            
+
             Ok(create_simple_success_response("Certificate uploaded successfully").unwrap())
         }
         Err(e) => {
@@ -646,7 +652,7 @@ async fn api_certificates_list_handler(
                 "status": "success",
                 "certificates": certificates
             });
-            
+
             Ok(Response::builder()
                 .status(StatusCode::OK)
                 .header("Content-Type", "application/json")
@@ -658,7 +664,7 @@ async fn api_certificates_list_handler(
                 "status": "error",
                 "message": format!("Failed to list certificates: {}", e)
             });
-            
+
             Ok(Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .header("Content-Type", "application/json")
@@ -675,18 +681,21 @@ async fn api_certificates_delete_handler(
     match state.config_manager.delete_certificate(&filename).await {
         Ok(_) => {
             // Log audit event
-            let _ = state.audit_logger.log_event(
-                crate::audit::AuditEventType::CertificateDelete,
-                format!("Certificate deleted: filename={}", filename),
-                None,
-                None,
-            ).await;
-            
+            let _ = state
+                .audit_logger
+                .log_event(
+                    crate::audit::AuditEventType::CertificateDelete,
+                    format!("Certificate deleted: filename={}", filename),
+                    None,
+                    None,
+                )
+                .await;
+
             let response = serde_json::json!({
                 "status": "success",
                 "message": format!("Certificate {} deleted successfully", filename)
             });
-            
+
             Ok(Response::builder()
                 .status(StatusCode::OK)
                 .header("Content-Type", "application/json")
@@ -698,7 +707,7 @@ async fn api_certificates_delete_handler(
                 "status": "error",
                 "message": format!("Failed to delete certificate {}: {}", filename, e)
             });
-            
+
             Ok(Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .header("Content-Type", "application/json")
@@ -708,31 +717,25 @@ async fn api_certificates_delete_handler(
     }
 }
 
-async fn metrics_handler(
-    state: AppState,
-) -> Result<impl warp::Reply, warp::Rejection> {
+async fn metrics_handler(state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
     match state.metrics.get_metrics().await {
-        Ok(metrics) => {
-            Ok(Response::builder()
-                .status(StatusCode::OK)
-                .header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
-                .body(Body::from(metrics))
-                .unwrap())
-        }
+        Ok(metrics) => Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+            .body(Body::from(metrics))
+            .unwrap()),
         Err(_) => Err(warp::reject::not_found()),
     }
 }
 
-async fn api_audit_logs_handler(
-    state: AppState,
-) -> Result<impl warp::Reply, warp::Rejection> {
+async fn api_audit_logs_handler(state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
     match state.audit_logger.get_audit_logs(None, None, None).await {
         Ok(logs) => {
             let response = serde_json::json!({
                 "status": "success",
                 "logs": logs
             });
-            
+
             Ok(Response::builder()
                 .status(StatusCode::OK)
                 .header("Content-Type", "application/json")
@@ -744,7 +747,7 @@ async fn api_audit_logs_handler(
                 "status": "error",
                 "message": format!("Failed to get audit logs: {}", e)
             });
-            
+
             Ok(Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .header("Content-Type", "application/json")
@@ -754,16 +757,14 @@ async fn api_audit_logs_handler(
     }
 }
 
-async fn api_audit_stats_handler(
-    state: AppState,
-) -> Result<impl warp::Reply, warp::Rejection> {
+async fn api_audit_stats_handler(state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
     match state.audit_logger.get_audit_stats().await {
         Ok(stats) => {
             let response = serde_json::json!({
                 "status": "success",
                 "stats": stats
             });
-            
+
             Ok(Response::builder()
                 .status(StatusCode::OK)
                 .header("Content-Type", "application/json")
@@ -775,7 +776,7 @@ async fn api_audit_stats_handler(
                 "status": "error",
                 "message": format!("Failed to get audit stats: {}", e)
             });
-            
+
             Ok(Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .header("Content-Type", "application/json")
@@ -796,7 +797,7 @@ async fn proxy_handler(
     // Record metrics
     state.metrics.record_request_start().await;
     state.metrics.record_connection_start().await;
-    
+
     // Check rate limit
     if let Err(_) = state.rate_limiter.check_async().await {
         tracing::warn!("Rate limit exceeded");
@@ -804,11 +805,15 @@ async fn proxy_handler(
         state.metrics.record_connection_end().await;
         return Err(warp::reject::custom(ProxyError::RateLimitExceeded));
     }
-    
+
     // Check request size limit
     let max_size = (state.max_request_size_mb * 1024 * 1024) as usize; // Convert MB to bytes
     if body.len() > max_size {
-        tracing::warn!("Request body too large: {} bytes (limit: {} bytes)", body.len(), max_size);
+        tracing::warn!(
+            "Request body too large: {} bytes (limit: {} bytes)",
+            body.len(),
+            max_size
+        );
         state.metrics.record_error("request").await;
         state.metrics.record_connection_end().await;
         return Err(warp::reject::custom(ProxyError::RequestTooLarge));
@@ -823,12 +828,15 @@ async fn proxy_handler(
         format!("{}{}", state.target_url, path.as_str())
     };
 
-    tracing::info!("Proxying request {} {} -> {}", method, path.as_str(), target_url);
+    tracing::info!(
+        "Proxying request {} {} -> {}",
+        method,
+        path.as_str(),
+        target_url
+    );
 
     // Create request to target
-    let mut target_req = hyper::Request::builder()
-        .method(method)
-        .uri(target_url);
+    let mut target_req = hyper::Request::builder().method(method).uri(target_url);
 
     // Copy headers (excluding hop-by-hop headers)
     for (name, value) in headers {
@@ -864,19 +872,21 @@ async fn proxy_handler(
     }
 
     // Forward the request to target using mTLS
-    let response = forward_request_with_mtls(target_req, &state.tls_client, state.timeout_duration).await;
+    let response =
+        forward_request_with_mtls(target_req, &state.tls_client, state.timeout_duration).await;
 
     // Log the response
     let duration_ms = start_time.elapsed().as_millis() as u64;
     let response_log = match &response {
         Ok(resp) => {
             // Try to get content length from headers
-            let body_size = resp.headers()
+            let body_size = resp
+                .headers()
                 .get("content-length")
                 .and_then(|v| v.to_str().ok())
                 .and_then(|s| s.parse::<usize>().ok())
                 .unwrap_or(0);
-            
+
             crate::logging::ResponseLog {
                 request_id: request_id.clone(),
                 timestamp: Utc::now(),
@@ -885,7 +895,7 @@ async fn proxy_handler(
                 body_size,
                 duration_ms,
             }
-        },
+        }
         Err(_) => crate::logging::ResponseLog {
             request_id: request_id.clone(),
             timestamp: Utc::now(),
@@ -935,7 +945,10 @@ async fn forward_request_with_mtls(
     let tcp_stream = tokio::net::TcpStream::connect(&addr).await?;
 
     // Establish TLS connection
-    let tls_stream = tls_client.connector().connect(host.try_into()?, tcp_stream).await?;
+    let tls_stream = tls_client
+        .connector()
+        .connect(host.try_into()?, tcp_stream)
+        .await?;
 
     // Create HTTP client with the TLS connection
     let (mut sender, conn) = hyper::client::conn::Builder::new()
@@ -971,8 +984,14 @@ async fn forward_request_with_mtls(
 pub fn is_hop_by_hop_header(name: &str) -> bool {
     matches!(
         name.to_lowercase().as_str(),
-        "connection" | "keep-alive" | "proxy-authenticate" | "proxy-authorization" | 
-        "te" | "trailers" | "transfer-encoding" | "upgrade"
+        "connection"
+            | "keep-alive"
+            | "proxy-authenticate"
+            | "proxy-authorization"
+            | "te"
+            | "trailers"
+            | "transfer-encoding"
+            | "upgrade"
     )
 }
 

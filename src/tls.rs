@@ -19,13 +19,13 @@ impl TlsClient {
     ) -> Result<Self> {
         // Load client certificate
         let client_cert = load_certificate(client_cert_path)?;
-        
+
         // Load client private key
         let client_key = load_private_key(client_key_path)?;
-        
+
         // Create root certificate store
         let mut root_store = RootCertStore::empty();
-        
+
         // Add CA certificate if provided
         if let Some(ca_path) = ca_cert_path {
             let ca_certs = load_certificates(ca_path)?;
@@ -33,7 +33,7 @@ impl TlsClient {
                 root_store.add(&cert)?;
             }
         }
-        
+
         // Create client config
         let mut client_config = rustls::ClientConfig::builder()
             .with_safe_defaults()
@@ -48,7 +48,7 @@ impl TlsClient {
         }
 
         let connector = TlsConnector::from(std::sync::Arc::new(client_config));
-        
+
         Ok(Self { connector })
     }
 
@@ -61,11 +61,11 @@ fn load_certificate(path: &Path) -> Result<Certificate> {
     let file = File::open(path)?;
     let mut reader = BufReader::new(file);
     let certs = certs(&mut reader)?;
-    
+
     if certs.is_empty() {
         anyhow::bail!("No certificates found in {}", path.display());
     }
-    
+
     Ok(Certificate(certs[0].clone()))
 }
 
@@ -73,35 +73,35 @@ fn load_certificates(path: &Path) -> Result<Vec<Certificate>> {
     let file = File::open(path)?;
     let mut reader = BufReader::new(file);
     let certs = certs(&mut reader)?;
-    
+
     Ok(certs.into_iter().map(Certificate).collect())
 }
 
 fn load_private_key(path: &Path) -> Result<PrivateKey> {
     let file = File::open(path)?;
     let mut reader = BufReader::new(file);
-    
+
     // Try PKCS8 first, then RSA
     if let Ok(keys) = pkcs8_private_keys(&mut reader) {
         if !keys.is_empty() {
             return Ok(PrivateKey(keys[0].clone()));
         }
     }
-    
+
     // Reset reader and try RSA
     let file = File::open(path)?;
     let mut reader = BufReader::new(file);
     let keys = rsa_private_keys(&mut reader)?;
-    
+
     if keys.is_empty() {
         anyhow::bail!("No private keys found in {}", path.display());
     }
-    
+
     Ok(PrivateKey(keys[0].clone()))
 }
 
 mod danger {
-    use rustls::client::{ServerCertVerifier, ServerCertVerified};
+    use rustls::client::{ServerCertVerified, ServerCertVerifier};
     use std::time::SystemTime;
 
     pub struct NoCertificateVerifier;

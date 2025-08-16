@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing::info;
@@ -52,7 +52,7 @@ impl AuditLogger {
 
     fn init_database(&self) -> Result<()> {
         let conn = Connection::open(&self.db_path)?;
-        
+
         conn.execute(
             "CREATE TABLE IF NOT EXISTS audit_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,7 +107,8 @@ impl AuditLogger {
                 ],
             )?;
             Ok::<(), anyhow::Error>(())
-        }).await??;
+        })
+        .await??;
 
         info!("Audit log: {} - {}", event_type_str_clone, details_clone);
         Ok(())
@@ -121,28 +122,29 @@ impl AuditLogger {
     ) -> Result<Vec<AuditLog>> {
         let db_path = self.db_path.clone();
         let event_type_str = event_type.map(|et| et.to_string());
-        
+
         tokio::task::spawn_blocking(move || {
             let conn = Connection::open(&db_path)?;
-            
+
             let mut query = "SELECT id, timestamp, event_type, details, user, ip_address 
-                           FROM audit_logs ORDER BY timestamp DESC".to_string();
-            
+                           FROM audit_logs ORDER BY timestamp DESC"
+                .to_string();
+
             let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
-            
+
             if let Some(et) = event_type_str {
                 query.push_str(" WHERE event_type = ?");
                 params.push(Box::new(et));
             }
-            
+
             if let Some(lim) = limit {
                 query.push_str(&format!(" LIMIT {}", lim));
             }
-            
+
             if let Some(off) = offset {
                 query.push_str(&format!(" OFFSET {}", off));
             }
-            
+
             let mut stmt = conn.prepare(&query)?;
             let rows = stmt.query_map(rusqlite::params_from_iter(params.iter()), |row| {
                 let event_type_str: String = row.get(2)?;
@@ -155,7 +157,7 @@ impl AuditLogger {
                     "server_stop" => AuditEventType::ServerStop,
                     _ => AuditEventType::ConfigUpdate, // Default fallback
                 };
-                
+
                 Ok(AuditLog {
                     id: Some(row.get(0)?),
                     timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(1)?)
@@ -167,46 +169,47 @@ impl AuditLogger {
                     ip_address: row.get(5)?,
                 })
             })?;
-            
+
             let mut logs = Vec::new();
             for row in rows {
                 logs.push(row?);
             }
-            
+
             Ok(logs)
-        }).await?
+        })
+        .await?
     }
 
     pub async fn get_audit_stats(&self) -> Result<AuditStats> {
         let db_path = self.db_path.clone();
-        
+
         tokio::task::spawn_blocking(move || {
             let conn = Connection::open(&db_path)?;
-            
+
             let total_count: i64 = conn.query_row(
                 "SELECT COUNT(*) FROM audit_logs",
                 [],
                 |row| row.get(0),
             )?;
-            
+
             let today_count: i64 = conn.query_row(
                 "SELECT COUNT(*) FROM audit_logs WHERE date(timestamp) = date('now')",
                 [],
                 |row| row.get(0),
             )?;
-            
+
             let config_updates: i64 = conn.query_row(
                 "SELECT COUNT(*) FROM audit_logs WHERE event_type = 'config_update'",
                 [],
                 |row| row.get(0),
             )?;
-            
+
             let certificate_ops: i64 = conn.query_row(
                 "SELECT COUNT(*) FROM audit_logs WHERE event_type IN ('certificate_upload', 'certificate_delete')",
                 [],
                 |row| row.get(0),
             )?;
-            
+
             Ok(AuditStats {
                 total_events: total_count,
                 events_today: today_count,
@@ -241,10 +244,10 @@ mod tests {
     async fn test_audit_logger_creation() {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test_audit.db");
-        
+
         let audit_logger = AuditLogger::new(db_path.clone()).unwrap();
         assert_eq!(audit_logger.db_path, db_path);
-        
+
         // Verify database was created
         assert!(db_path.exists());
     }
@@ -252,47 +255,58 @@ mod tests {
     #[tokio::test]
     async fn test_log_event() {
         let (audit_logger, _temp_dir) = create_test_audit_logger();
-        
-        let result = audit_logger.log_event(
-            AuditEventType::ConfigUpdate,
-            "Configuration updated".to_string(),
-            Some("test_user".to_string()),
-            Some("127.0.0.1".to_string()),
-        ).await;
-        
+
+        let result = audit_logger
+            .log_event(
+                AuditEventType::ConfigUpdate,
+                "Configuration updated".to_string(),
+                Some("test_user".to_string()),
+                Some("127.0.0.1".to_string()),
+            )
+            .await;
+
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_log_multiple_events() {
         let (audit_logger, _temp_dir) = create_test_audit_logger();
-        
+
         // Log multiple events
-        audit_logger.log_event(
-            AuditEventType::ConfigUpdate,
-            "Configuration updated".to_string(),
-            None,
-            None,
-        ).await.unwrap();
-        
-        audit_logger.log_event(
-            AuditEventType::CertificateUpload,
-            "Certificate uploaded".to_string(),
-            None,
-            None,
-        ).await.unwrap();
-        
-        audit_logger.log_event(
-            AuditEventType::CertificateDelete,
-            "Certificate deleted".to_string(),
-            None,
-            None,
-        ).await.unwrap();
-        
+        audit_logger
+            .log_event(
+                AuditEventType::ConfigUpdate,
+                "Configuration updated".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        audit_logger
+            .log_event(
+                AuditEventType::CertificateUpload,
+                "Certificate uploaded".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        audit_logger
+            .log_event(
+                AuditEventType::CertificateDelete,
+                "Certificate deleted".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
         // Verify all events were logged
         let logs = audit_logger.get_audit_logs(None, None, None).await.unwrap();
         assert_eq!(logs.len(), 3);
-        
+
         // Check that all expected event types are present (order may vary)
         let event_types: Vec<_> = logs.iter().map(|log| &log.event_type).collect();
         assert!(event_types.contains(&&AuditEventType::ConfigUpdate));
@@ -303,28 +317,37 @@ mod tests {
     #[tokio::test]
     async fn test_get_audit_logs() {
         let (audit_logger, _temp_dir) = create_test_audit_logger();
-        
+
         // Log some events
-        audit_logger.log_event(
-            AuditEventType::ConfigUpdate,
-            "Configuration updated".to_string(),
-            None,
-            None,
-        ).await.unwrap();
-        
-        audit_logger.log_event(
-            AuditEventType::CertificateUpload,
-            "Certificate uploaded".to_string(),
-            None,
-            None,
-        ).await.unwrap();
-        
+        audit_logger
+            .log_event(
+                AuditEventType::ConfigUpdate,
+                "Configuration updated".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        audit_logger
+            .log_event(
+                AuditEventType::CertificateUpload,
+                "Certificate uploaded".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
         // Get all logs
         let logs = audit_logger.get_audit_logs(None, None, None).await.unwrap();
         assert_eq!(logs.len(), 2);
-        
+
         // Verify log structure
-        let config_log = logs.iter().find(|log| log.event_type == AuditEventType::ConfigUpdate).unwrap();
+        let config_log = logs
+            .iter()
+            .find(|log| log.event_type == AuditEventType::ConfigUpdate)
+            .unwrap();
         assert_eq!(config_log.details, "Configuration updated");
         assert!(config_log.user.is_none());
         assert!(config_log.ip_address.is_none());
@@ -334,70 +357,91 @@ mod tests {
     #[tokio::test]
     async fn test_get_audit_logs_with_limit() {
         let (audit_logger, _temp_dir) = create_test_audit_logger();
-        
+
         // Log multiple events
         for i in 0..5 {
-            audit_logger.log_event(
-                AuditEventType::ConfigUpdate,
-                format!("Configuration update {}", i),
-                None,
-                None,
-            ).await.unwrap();
+            audit_logger
+                .log_event(
+                    AuditEventType::ConfigUpdate,
+                    format!("Configuration update {}", i),
+                    None,
+                    None,
+                )
+                .await
+                .unwrap();
         }
-        
+
         // Get logs with limit
-        let logs = audit_logger.get_audit_logs(Some(3), None, None).await.unwrap();
+        let logs = audit_logger
+            .get_audit_logs(Some(3), None, None)
+            .await
+            .unwrap();
         assert_eq!(logs.len(), 3);
     }
 
     #[tokio::test]
     async fn test_get_audit_logs_with_offset() {
         let (audit_logger, _temp_dir) = create_test_audit_logger();
-        
+
         // Log multiple events
         for i in 0..5 {
-            audit_logger.log_event(
-                AuditEventType::ConfigUpdate,
-                format!("Configuration update {}", i),
-                None,
-                None,
-            ).await.unwrap();
+            audit_logger
+                .log_event(
+                    AuditEventType::ConfigUpdate,
+                    format!("Configuration update {}", i),
+                    None,
+                    None,
+                )
+                .await
+                .unwrap();
         }
-        
+
         // Get logs with offset
-        let logs = audit_logger.get_audit_logs(Some(3), Some(2), None).await.unwrap();
+        let logs = audit_logger
+            .get_audit_logs(Some(3), Some(2), None)
+            .await
+            .unwrap();
         assert_eq!(logs.len(), 3);
     }
 
     #[tokio::test]
     async fn test_get_audit_stats() {
         let (audit_logger, _temp_dir) = create_test_audit_logger();
-        
+
         // Log events of different types
-        audit_logger.log_event(
-            AuditEventType::ConfigUpdate,
-            "Configuration updated".to_string(),
-            None,
-            None,
-        ).await.unwrap();
-        
-        audit_logger.log_event(
-            AuditEventType::CertificateUpload,
-            "Certificate uploaded".to_string(),
-            None,
-            None,
-        ).await.unwrap();
-        
-        audit_logger.log_event(
-            AuditEventType::CertificateDelete,
-            "Certificate deleted".to_string(),
-            None,
-            None,
-        ).await.unwrap();
-        
+        audit_logger
+            .log_event(
+                AuditEventType::ConfigUpdate,
+                "Configuration updated".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        audit_logger
+            .log_event(
+                AuditEventType::CertificateUpload,
+                "Certificate uploaded".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        audit_logger
+            .log_event(
+                AuditEventType::CertificateDelete,
+                "Certificate deleted".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
         // Get stats
         let stats = audit_logger.get_audit_stats().await.unwrap();
-        
+
         assert_eq!(stats.total_events, 3);
         assert_eq!(stats.events_today, 3);
         assert_eq!(stats.config_updates, 1);
@@ -407,9 +451,18 @@ mod tests {
     #[tokio::test]
     async fn test_audit_event_type_display() {
         assert_eq!(AuditEventType::ConfigUpdate.to_string(), "config_update");
-        assert_eq!(AuditEventType::CertificateUpload.to_string(), "certificate_upload");
-        assert_eq!(AuditEventType::CertificateDelete.to_string(), "certificate_delete");
-        assert_eq!(AuditEventType::ConfigValidation.to_string(), "config_validation");
+        assert_eq!(
+            AuditEventType::CertificateUpload.to_string(),
+            "certificate_upload"
+        );
+        assert_eq!(
+            AuditEventType::CertificateDelete.to_string(),
+            "certificate_delete"
+        );
+        assert_eq!(
+            AuditEventType::ConfigValidation.to_string(),
+            "config_validation"
+        );
         assert_eq!(AuditEventType::ServerStart.to_string(), "server_start");
         assert_eq!(AuditEventType::ServerStop.to_string(), "server_stop");
     }
@@ -424,10 +477,10 @@ mod tests {
             user: Some("test_user".to_string()),
             ip_address: Some("127.0.0.1".to_string()),
         };
-        
+
         let json = serde_json::to_string(&audit_log).unwrap();
         let deserialized: AuditLog = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(deserialized.id, audit_log.id);
         assert_eq!(deserialized.event_type, audit_log.event_type);
         assert_eq!(deserialized.details, audit_log.details);
@@ -443,32 +496,37 @@ mod tests {
             config_updates: 3,
             certificate_operations: 7,
         };
-        
+
         let json = serde_json::to_string(&stats).unwrap();
         let deserialized: AuditStats = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(deserialized.total_events, stats.total_events);
         assert_eq!(deserialized.events_today, stats.events_today);
         assert_eq!(deserialized.config_updates, stats.config_updates);
-        assert_eq!(deserialized.certificate_operations, stats.certificate_operations);
+        assert_eq!(
+            deserialized.certificate_operations,
+            stats.certificate_operations
+        );
     }
 
     #[tokio::test]
     async fn test_audit_logger_with_user_and_ip() {
         let (audit_logger, _temp_dir) = create_test_audit_logger();
-        
-        let result = audit_logger.log_event(
-            AuditEventType::ConfigUpdate,
-            "Configuration updated by user".to_string(),
-            Some("admin".to_string()),
-            Some("192.168.1.100".to_string()),
-        ).await;
-        
+
+        let result = audit_logger
+            .log_event(
+                AuditEventType::ConfigUpdate,
+                "Configuration updated by user".to_string(),
+                Some("admin".to_string()),
+                Some("192.168.1.100".to_string()),
+            )
+            .await;
+
         assert!(result.is_ok());
-        
+
         let logs = audit_logger.get_audit_logs(None, None, None).await.unwrap();
         assert_eq!(logs.len(), 1);
-        
+
         let log = &logs[0];
         assert_eq!(log.user, Some("admin".to_string()));
         assert_eq!(log.ip_address, Some("192.168.1.100".to_string()));
@@ -485,29 +543,31 @@ mod tests {
     #[tokio::test]
     async fn test_audit_logger_concurrent_access() {
         let (audit_logger, _temp_dir) = create_test_audit_logger();
-        
+
         // Spawn multiple tasks to log events concurrently
         let mut handles = vec![];
-        
+
         for i in 0..10 {
             let audit_logger_clone = audit_logger.clone();
             let handle = tokio::spawn(async move {
-                audit_logger_clone.log_event(
-                    AuditEventType::ConfigUpdate,
-                    format!("Concurrent update {}", i),
-                    None,
-                    None,
-                ).await
+                audit_logger_clone
+                    .log_event(
+                        AuditEventType::ConfigUpdate,
+                        format!("Concurrent update {}", i),
+                        None,
+                        None,
+                    )
+                    .await
             });
             handles.push(handle);
         }
-        
+
         // Wait for all tasks to complete
         for handle in handles {
             let result = handle.await.unwrap();
             assert!(result.is_ok());
         }
-        
+
         // Verify all events were logged
         let logs = audit_logger.get_audit_logs(None, None, None).await.unwrap();
         assert_eq!(logs.len(), 10);
@@ -516,9 +576,9 @@ mod tests {
     #[tokio::test]
     async fn test_audit_logger_empty_stats() {
         let (audit_logger, _temp_dir) = create_test_audit_logger();
-        
+
         let stats = audit_logger.get_audit_stats().await.unwrap();
-        
+
         assert_eq!(stats.total_events, 0);
         assert_eq!(stats.events_today, 0);
         assert_eq!(stats.config_updates, 0);
