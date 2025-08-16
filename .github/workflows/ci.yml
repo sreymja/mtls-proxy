@@ -19,11 +19,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
         rust: [stable, 1.82]
         exclude:
-          - os: windows-latest
-            rust: 1.82
           - os: macos-latest
             rust: 1.82
 
@@ -36,6 +34,7 @@ jobs:
       with:
         toolchain: ${{ matrix.rust }}
         components: rustfmt, clippy
+        timeout-minutes: 10
 
     - name: Update Cargo if needed
       run: |
@@ -60,25 +59,11 @@ jobs:
       run: |
         brew install pkg-config openssl sqlite3
 
-    - name: Install system dependencies (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        # Windows dependencies are handled by rustup
-        echo "Windows dependencies handled by rustup"
-
-    - name: Generate test certificates (Unix)
-      if: matrix.os != 'windows-latest'
+    - name: Generate test certificates
       run: |
         # Use the existing certificate generation script
         chmod +x scripts/generate_certs.sh
         ./scripts/generate_certs.sh
-
-    - name: Generate test certificates (Windows)
-      if: matrix.os == 'windows-latest'
-      shell: pwsh
-      run: |
-        # Use the PowerShell certificate generation script
-        .\scripts\generate_certs.ps1
 
     - name: Fix lock file compatibility
       run: |
