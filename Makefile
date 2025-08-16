@@ -17,7 +17,8 @@ help:
 	@echo "  make lint       - Run clippy linting"
 	@echo "  make audit      - Run cargo audit"
 	@echo "  make deny       - Run cargo deny"
-	@echo "  make ci         - Run all CI checks (format, lint, test, audit, deny)"
+	@echo "  make ci         - Run all CI checks (format, lint, test, audit, deny, docker)"
+	@echo "  make docker-build - Test Docker build"
 	@echo "  make clean      - Clean build artifacts"
 	@echo "  make help       - Show this help message"
 
@@ -87,8 +88,19 @@ deny:
 		echo "⚠️  cargo-deny not installed. Install with: cargo install cargo-deny"; \
 	fi
 
+# Test Docker build
+docker-build:
+	@echo "🐳 Testing Docker build..."
+	@if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then \
+		docker build -t mtls-proxy-test . && \
+		echo "✅ Docker build successful!" && \
+		docker rmi mtls-proxy-test 2>/dev/null || true; \
+	else \
+		echo "⚠️  Docker not available. Skipping Docker build test."; \
+	fi
+
 # Run all CI checks
-ci: format lint test audit deny
+ci: format lint test audit deny docker-build
 	@echo "🎉 All CI checks passed!"
 
 # Clean build artifacts

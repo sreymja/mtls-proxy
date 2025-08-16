@@ -85,10 +85,29 @@ run_tests() {
             else
                 print_warning "cargo-deny not installed. Skipping dependency checks."
             fi
+            
+            print_status "Testing Docker build..."
+            if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+                docker build -t mtls-proxy-test . && \
+                print_success "Docker build successful!" && \
+                docker rmi mtls-proxy-test 2>/dev/null || true
+            else
+                print_warning "Docker not available. Skipping Docker build test."
+            fi
+            ;;
+        "docker")
+            print_status "Testing Docker build..."
+            if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+                docker build -t mtls-proxy-test . && \
+                print_success "Docker build successful!" && \
+                docker rmi mtls-proxy-test 2>/dev/null || true
+            else
+                print_warning "Docker not available. Skipping Docker build test."
+            fi
             ;;
         *)
             print_error "Unknown test type: $test_type"
-            echo "Usage: $0 [unit|integration|performance|security|all|ci]"
+            echo "Usage: $0 [unit|integration|performance|security|all|ci|docker]"
             exit 1
             ;;
     esac
