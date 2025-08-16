@@ -115,6 +115,16 @@ git push origin v0.1.0
 3. Verify system dependencies are installed
 4. Check for platform-specific issues
 
+### Lock File Version Issues
+
+**Problem:** `lock file version '4' was found, but this version of Cargo does not understand this lock file`
+
+**Solution:**
+1. The CI pipeline now automatically handles this issue
+2. Run `./scripts/check-rust-version.sh` locally to fix lock file issues
+3. Update your local Rust version: `rustup update`
+4. Regenerate lock file: `rm Cargo.lock && cargo generate-lockfile`
+
 ### Build Failures
 
 **Problem:** Build job fails

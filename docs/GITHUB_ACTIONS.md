@@ -276,6 +276,11 @@ The CI/CD pipeline creates the following installation assets:
    - Check for port conflicts
    - Verify test environment setup
 
+3. **Lock File Version Issues:**
+   - **Error:** `lock file version '4' was found, but this version of Cargo does not understand this lock file`
+   - **Cause:** Cargo.lock created with newer Cargo version than available in CI
+   - **Solution:** CI pipeline automatically regenerates lock file, or run `./scripts/check-rust-version.sh` locally
+
 3. **Security Scan Failures:**
    - Review vulnerability reports
    - Update dependencies if needed
