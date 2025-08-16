@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::errors::{AppError, ErrorCode, config_error, certificate_error, filesystem_error, validation_error};
+use crate::errors::{AppError, ErrorCode, config_error, certificate_error, filesystem_error};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -333,11 +333,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_config_manager_creation() {
+        // Set development environment for testing
+        std::env::set_var("RUST_ENV", "development");
+        
         let config = create_test_config();
         let config_manager = ConfigManager::new(config);
         
         assert_eq!(config_manager.config_path, PathBuf::from("./config/config.toml"));
         assert_eq!(config_manager.certs_dir, PathBuf::from("./certs"));
+        
+        // Clean up environment variable
+        std::env::remove_var("RUST_ENV");
     }
 
     #[tokio::test]
@@ -352,6 +358,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_update_config_success() {
+        // Set development environment for testing
+        std::env::set_var("RUST_ENV", "development");
+        
         let temp_dir = TempDir::new().unwrap();
         let config_path = temp_dir.path().join("config.toml");
         let certs_dir = temp_dir.path().join("certs");
@@ -359,7 +368,10 @@ mod tests {
         let mut config = create_test_config();
         config.target.base_url = "https://test.example.com".to_string();
         
-        let config_manager = ConfigManager::new(config);
+        let mut config_manager = ConfigManager::new(config);
+        // Override paths to use temp directory
+        config_manager.config_path = config_path.clone();
+        config_manager.certs_dir = certs_dir.clone();
         
         let update = ConfigUpdateRequest {
             target_url: "https://new.example.com".to_string(),
@@ -374,6 +386,9 @@ mod tests {
         assert_eq!(updated_config.target.base_url, "https://new.example.com");
         assert_eq!(updated_config.target.timeout_secs, 120);
         assert_eq!(updated_config.server.max_connections, 200);
+        
+        // Clean up environment variable
+        std::env::remove_var("RUST_ENV");
     }
 
     #[tokio::test]

@@ -1,11 +1,11 @@
-use crate::errors::{AppError, ErrorCode, ErrorResponse, get_user_friendly_message};
+use crate::errors::{AppError, ErrorCode, ErrorResponse};
 use crate::proxy::ProxyError;
 use serde_json;
 use std::convert::Infallible;
 use uuid::Uuid;
 use warp::http::{Response, StatusCode};
 use warp::hyper::Body;
-use warp::reject::{MethodNotAllowed, PayloadTooLarge, Reject};
+use warp::reject::{MethodNotAllowed, PayloadTooLarge};
 use warp::{Rejection, Reply};
 
 /// Custom error handler that provides consistent error responses
