@@ -15,3 +15,9 @@ certs/*.crt
 certs/*.key
 certs/*.srl
 certs/*.csr
+
+# Test database files
+test_*_logs.db*
+test_*.db*
+*.db-shm
+*.db-wal
