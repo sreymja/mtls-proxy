@@ -260,7 +260,6 @@ impl ConfigManager {
         #[cfg(target_os = "linux")]
         {
             use std::os::unix::fs::chown;
-            use std::os::unix::fs::PermissionsExt;
 
             // Try to set ownership to mtls-proxy user (UID 1000 is typical for service users)
             if let Ok(uid) = std::env::var("SUDO_UID").or_else(|_| std::env::var("UID")) {
