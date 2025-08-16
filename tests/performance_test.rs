@@ -7,7 +7,6 @@ use tokio::time::sleep;
 
 // Performance test configuration
 const CONCURRENT_REQUESTS: usize = 100;
-const TEST_DURATION_SECS: u64 = 30;
 const RATE_LIMIT_REQUESTS_PER_SEC: u32 = 50;
 
 #[tokio::test]
@@ -71,7 +70,7 @@ async fn test_concurrent_request_handling() {
     // Spawn concurrent requests
     let mut handles = vec![];
 
-    for i in 0..CONCURRENT_REQUESTS {
+    for _i in 0..CONCURRENT_REQUESTS {
         let client_clone = client.clone();
         let success_count_clone = success_count.clone();
         let error_count_clone = error_count.clone();
@@ -79,7 +78,7 @@ async fn test_concurrent_request_handling() {
 
         let handle = tokio::spawn(async move {
             // Make multiple requests per worker
-            for j in 0..10 {
+            for _j in 0..10 {
                 total_requests_clone.fetch_add(1, Ordering::Relaxed);
 
                 let response = client_clone
@@ -214,7 +213,7 @@ async fn test_rate_limiting_effectiveness() {
     // Send requests rapidly to trigger rate limiting
     let mut handles = vec![];
 
-    for i in 0..50 {
+    for _i in 0..50 {
         let client_clone = client.clone();
         let success_count_clone = success_count.clone();
         let rate_limited_count_clone = rate_limited_count.clone();
@@ -272,8 +271,7 @@ async fn test_rate_limiting_effectiveness() {
     );
 
     // Basic assertion that the test ran
-    assert!(successful_requests >= 0, "Test should complete");
-    assert!(rate_limited_requests >= 0, "Test should complete");
+    // Note: successful_requests and rate_limited_requests are always >= 0
 
     // Clean up
     proxy_handle.abort();

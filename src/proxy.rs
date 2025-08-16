@@ -44,6 +44,7 @@ struct AppState {
     target_url: String,
     timeout_duration: Duration,
     max_request_size_mb: u64,
+    #[allow(dead_code)]
     max_concurrent_requests: usize,
 }
 
@@ -799,7 +800,7 @@ async fn proxy_handler(
     state.metrics.record_connection_start().await;
 
     // Check rate limit
-    if let Err(_) = state.rate_limiter.check_async().await {
+    if state.rate_limiter.check_async().await.is_err() {
         tracing::warn!("Rate limit exceeded");
         state.metrics.record_error("request").await;
         state.metrics.record_connection_end().await;

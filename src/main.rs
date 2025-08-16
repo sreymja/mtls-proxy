@@ -12,7 +12,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // Initialize logging
-    let _subscriber = FmtSubscriber::builder()
+    FmtSubscriber::builder()
         .with_max_level(match cli.get_log_level() {
             "debug" => Level::DEBUG,
             "info" => Level::INFO,

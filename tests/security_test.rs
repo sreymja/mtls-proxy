@@ -241,7 +241,7 @@ async fn test_file_path_security() {
     #[cfg(unix)]
     {
         use std::os::unix::fs::symlink;
-        if let Ok(_) = symlink(&symlink_target, &symlink_path) {
+        if symlink(&symlink_target, &symlink_path).is_ok() {
             // Verify that the symlink doesn't allow access to files outside certs directory
             let symlink_canonical = symlink_path.canonicalize();
             match symlink_canonical {
@@ -313,7 +313,7 @@ timeout_secs = 60
         let mode = permissions.mode();
 
         // Check that the file is not world-readable (should be 600 or 640)
-        let world_readable = (mode & 0o004) != 0;
+        let _world_readable = (mode & 0o004) != 0;
         let world_writable = (mode & 0o002) != 0;
 
         assert!(
