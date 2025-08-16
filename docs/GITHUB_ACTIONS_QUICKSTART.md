@@ -125,6 +125,16 @@ git push origin v0.1.0
 3. Update your local Rust version: `rustup update`
 4. Regenerate lock file: `rm Cargo.lock && cargo generate-lockfile`
 
+### Dependency Version Conflicts
+
+**Problem:** `package 'icu_collections v2.0.0' cannot be built because it requires rustc 1.82 or newer`
+
+**Solution:**
+1. The CI pipeline automatically pins problematic dependencies
+2. Run `./scripts/check-rust-version.sh` locally to fix dependency issues
+3. The `url` dependency is pinned to version 2.4.1 to avoid ICU dependencies
+4. If issues persist, manually run: `cargo update url --precise 2.4.1`
+
 ### Build Failures
 
 **Problem:** Build job fails

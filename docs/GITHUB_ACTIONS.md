@@ -281,6 +281,11 @@ The CI/CD pipeline creates the following installation assets:
    - **Cause:** Cargo.lock created with newer Cargo version than available in CI
    - **Solution:** CI pipeline automatically regenerates lock file, or run `./scripts/check-rust-version.sh` locally
 
+4. **Dependency Version Conflicts:**
+   - **Error:** `package 'icu_collections v2.0.0' cannot be built because it requires rustc 1.82 or newer`
+   - **Cause:** Transitive dependencies requiring newer Rust versions
+   - **Solution:** CI pipeline automatically pins `url` to 2.4.1, or run `./scripts/check-rust-version.sh` locally
+
 3. **Security Scan Failures:**
    - Review vulnerability reports
    - Update dependencies if needed

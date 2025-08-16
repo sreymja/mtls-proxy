@@ -37,6 +37,35 @@ else
     cargo generate-lockfile
 fi
 
+# Check for dependency version conflicts
+echo ""
+echo "Checking for dependency version conflicts..."
+if cargo check; then
+    echo "✅ All dependencies are compatible"
+else
+    echo "❌ Dependency version conflict detected"
+    echo "Attempting to resolve with compatible versions..."
+    
+    # Try aggressive update first
+    cargo update --aggressive
+    if cargo check; then
+        echo "✅ Dependencies resolved successfully"
+    else
+        echo "Trying to pin problematic dependencies..."
+        
+        # Try pinning url to a compatible version
+        cargo update url --precise 2.4.1 || true
+        
+        if cargo check; then
+            echo "✅ Dependencies resolved by pinning url to 2.4.1"
+        else
+            echo "❌ Could not resolve dependency conflicts automatically"
+            echo "You may need to manually update dependencies or Rust version"
+            exit 1
+        fi
+    fi
+fi
+
 # Verify everything works
 echo ""
 echo "Verifying build..."

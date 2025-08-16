@@ -30,7 +30,7 @@ clap = { version = "4.0", features = ["derive"] }
 futures-util = { version = "0.3", features = ["compat"] }
 tokio-signal = "0.1"
 http = "0.2"
-url = "2.4"
+url = "=2.4.1"
 prometheus = "0.13"
 
 # multipart = "0.18"  # Temporarily disabled
