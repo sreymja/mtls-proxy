@@ -1,0 +1,430 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Test job - runs on multiple platforms
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        rust: [stable, 1.75]
+        exclude:
+          - os: windows-latest
+            rust: 1.75
+          - os: macos-latest
+            rust: 1.75
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: ${{ matrix.rust }}
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ matrix.os }}-${{ matrix.rust }}
+
+    - name: Install system dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y pkg-config libssl-dev sqlite3
+
+    - name: Install system dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install pkg-config openssl sqlite3
+
+    - name: Install system dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        # Windows dependencies are handled by rustup
+        echo "Windows dependencies handled by rustup"
+
+    - name: Generate test certificates
+      run: |
+        mkdir -p certs
+        # Generate self-signed certificates for testing
+        openssl req -x509 -newkey rsa:4096 -keyout certs/client.key -out certs/client.crt -days 365 -nodes -subj "/CN=test-client"
+        openssl req -x509 -newkey rsa:4096 -keyout certs/ca.key -out certs/ca.crt -days 365 -nodes -subj "/CN=test-ca"
+        chmod 600 certs/*.key
+
+    - name: Run unit tests
+      run: cargo test --lib
+
+    - name: Run integration tests
+      run: cargo test --test integration_test
+
+    - name: Run performance tests
+      run: cargo test --test performance_test
+
+    - name: Run security tests
+      run: cargo test --test security_test
+
+    - name: Run all tests with coverage
+      run: |
+        cargo test --all-features
+        cargo test --all-features -- --nocapture
+
+    - name: Check code formatting
+      run: cargo fmt --all -- --check
+
+    - name: Check clippy warnings
+      run: cargo clippy --all-targets --all-features -- -D warnings
+
+  # Security scanning job
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Run cargo audit
+      run: cargo audit
+
+    - name: Run cargo deny
+      run: |
+        cargo install cargo-deny
+        cargo deny check
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Build job - creates installation assets
+  build:
+    name: Build Assets
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    if: github.event_name == 'push' || github.event_name == 'release'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y pkg-config libssl-dev sqlite3 rpm-build
+
+    - name: Generate certificates
+      run: |
+        mkdir -p certs
+        openssl req -x509 -newkey rsa:4096 -keyout certs/client.key -out certs/client.crt -days 365 -nodes -subj "/CN=test-client"
+        openssl req -x509 -newkey rsa:4096 -keyout certs/ca.key -out certs/ca.crt -days 365 -nodes -subj "/CN=test-ca"
+        chmod 600 certs/*.key
+
+    - name: Build release binary
+      run: cargo build --release
+
+    - name: Create build directory
+      run: mkdir -p build
+
+    - name: Build Docker image
+      run: |
+        # Build Docker image
+        docker build -t mtls-proxy:${{ github.sha }} .
+        docker save mtls-proxy:${{ github.sha }} | gzip > build/mtls-proxy-${{ github.sha }}.tar.gz
+
+    - name: Build RPM package
+      run: |
+        # Set version from git tag or use default
+        VERSION=${GITHUB_REF#refs/tags/v}
+        if [ "$VERSION" = "$GITHUB_REF" ]; then
+          VERSION="0.1.0"
+        fi
+        
+        # Update spec file with version
+        sed -i "s/Version:.*/Version: $VERSION/" mtls-proxy.spec
+        
+        # Build RPM
+        ./scripts/build-package.sh
+
+    - name: Create deployment files
+      run: |
+        # Create Kubernetes deployment
+        cat > build/k8s-deployment.yaml << 'EOF'
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: mtls-proxy
+          labels:
+            app: mtls-proxy
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: mtls-proxy
+          template:
+            metadata:
+              labels:
+                app: mtls-proxy
+            spec:
+              containers:
+              - name: mtls-proxy
+                image: mtls-proxy:latest
+                ports:
+                - containerPort: 8443
+                  name: proxy
+                - containerPort: 8080
+                  name: web
+                env:
+                - name: RUST_LOG
+                  value: "info"
+                volumeMounts:
+                - name: config
+                  mountPath: /etc/mtls-proxy
+                  readOnly: true
+                - name: certs
+                  mountPath: /etc/mtls-proxy/certs
+                - name: logs
+                  mountPath: /var/log/mtls-proxy
+                - name: data
+                  mountPath: /var/lib/mtls-proxy
+                livenessProbe:
+                  httpGet:
+                    path: /health
+                    port: 8080
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                readinessProbe:
+                  httpGet:
+                    path: /health
+                    port: 8080
+                  initialDelaySeconds: 5
+                  periodSeconds: 5
+                resources:
+                  limits:
+                    memory: "512Mi"
+                    cpu: "1000m"
+                  requests:
+                    memory: "256Mi"
+                    cpu: "500m"
+              volumes:
+              - name: config
+                configMap:
+                  name: mtls-proxy-config
+              - name: certs
+                secret:
+                  secretName: mtls-proxy-certs
+              - name: logs
+                emptyDir: {}
+              - name: data
+                persistentVolumeClaim:
+                  claimName: mtls-proxy-data
+        ---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: mtls-proxy-service
+        spec:
+          selector:
+            app: mtls-proxy
+          ports:
+          - name: proxy
+            port: 8443
+            targetPort: 8443
+          - name: web
+            port: 8080
+            targetPort: 8080
+          type: ClusterIP
+        EOF
+
+        # Create Docker Compose file
+        cat > build/docker-compose.yml << 'EOF'
+        version: '3.8'
+        
+        services:
+          mtls-proxy:
+            image: mtls-proxy:latest
+            restart: unless-stopped
+            ports:
+              - "8443:8443"
+              - "8080:8080"
+            volumes:
+              - ./config:/etc/mtls-proxy:ro
+              - ./certs:/etc/mtls-proxy/certs
+              - ./logs:/var/log/mtls-proxy
+              - ./data:/var/lib/mtls-proxy
+            environment:
+              - RUST_LOG=info
+            deploy:
+              resources:
+                limits:
+                  memory: 512M
+                  cpus: '1.0'
+                reservations:
+                  memory: 256M
+                  cpus: '0.5'
+            healthcheck:
+              test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+              interval: 30s
+              timeout: 10s
+              retries: 3
+              start_period: 40s
+        EOF
+
+    - name: Create installation script
+      run: |
+        cat > build/install.sh << 'EOF'
+        #!/bin/bash
+        set -e
+        
+        echo "Installing mTLS Proxy..."
+        
+        # Check if running as root
+        if [ "$EUID" -ne 0 ]; then
+          echo "Please run as root (use sudo)"
+          exit 1
+        fi
+        
+        # Create directories
+        mkdir -p /etc/mtls-proxy/certs
+        mkdir -p /var/log/mtls-proxy
+        mkdir -p /var/lib/mtls-proxy
+        
+        # Copy binary
+        cp target/release/mtls-proxy /usr/local/bin/
+        chmod +x /usr/local/bin/mtls-proxy
+        
+        # Copy configuration
+        cp config/default.toml /etc/mtls-proxy/
+        chmod 644 /etc/mtls-proxy/default.toml
+        
+        # Copy systemd service
+        cp scripts/mtls-proxy.service /etc/systemd/system/
+        chmod 644 /etc/systemd/system/mtls-proxy.service
+        
+        # Create user
+        useradd -r -s /bin/false mtls-proxy || true
+        
+        # Set permissions
+        chown -R mtls-proxy:mtls-proxy /var/log/mtls-proxy /var/lib/mtls-proxy
+        chmod 700 /etc/mtls-proxy/certs
+        
+        # Enable and start service
+        systemctl daemon-reload
+        systemctl enable mtls-proxy
+        systemctl start mtls-proxy
+        
+        echo "Installation completed!"
+        echo "Service status: systemctl status mtls-proxy"
+        echo "Logs: journalctl -u mtls-proxy -f"
+        EOF
+        
+        chmod +x build/install.sh
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: |
+          build/
+          target/release/mtls-proxy
+          *.rpm
+        retention-days: 30
+
+  # Release job - publishes release assets
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'release'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-artifacts
+        path: build/
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          build/mtls-proxy-${{ github.sha }}.tar.gz
+          build/k8s-deployment.yaml
+          build/docker-compose.yml
+          build/install.sh
+          *.rpm
+        generate_release_notes: true
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Documentation job
+  docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install mdBook
+      run: cargo install mdbook
+
+    - name: Build documentation
+      run: |
+        # Build Rust documentation
+        cargo doc --no-deps
+        
+        # Build markdown documentation (if mdBook is configured)
+        if [ -f "book.toml" ]; then
+          mdbook build
+        fi
+
+    - name: Upload documentation
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation
+        path: |
+          target/doc/
+          book/
+        retention-days: 30
