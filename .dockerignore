@@ -1,0 +1,47 @@
+# Git
+.git
+.gitignore
+
+# Rust
+target/
+
+# Documentation
+docs/
+*.md
+README.md
+
+# Scripts
+scripts/
+*.sh
+*.ps1
+
+# Tests
+tests/
+test_*.db*
+*.db-shm
+*.db-wal
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Certificates (will be generated or mounted)
+certs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Build artifacts
+dist/
+build/

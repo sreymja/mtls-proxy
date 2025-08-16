@@ -30,8 +30,8 @@ clap = { version = "4.0", features = ["derive"] }
 futures-util = { version = "0.3", features = ["compat"] }
 
 http = "0.2"
-    url = "2.5"
-    prometheus = "0.14"
+url = "2.5"
+prometheus = "0.14"
 
 # multipart = "0.18"  # Temporarily disabled
 # tempfile = "3.8"    # Temporarily disabled
