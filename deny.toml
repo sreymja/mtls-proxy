@@ -5,7 +5,6 @@
 # Check for security advisories
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-vulnerability = "deny"
 yanked = "warn"
 ignore = [
     # Add any advisories to ignore here
@@ -13,12 +12,7 @@ ignore = [
 
 [licenses]
 # License checking configuration
-default = "deny"
-copyleft = "deny"
-allow-osi-fsf-free = "both"
 confidence-threshold = 0.8
-clarify = true
-expression-spdx = true
 
 # Allowed licenses
 allow = [
@@ -27,36 +21,9 @@ allow = [
     "BSD-2-Clause",
     "BSD-3-Clause",
     "ISC",
-    "CC0-1.0",
     "Unlicense",
     "Zlib",
-    "OpenSSL",
-]
-
-# Explicitly denied licenses
-deny = [
-    "GPL-1.0",
-    "GPL-1.0+",
-    "GPL-2.0",
-    "GPL-2.0+",
-    "GPL-2.0-only",
-    "GPL-2.0-or-later",
-    "GPL-3.0",
-    "GPL-3.0+",
-    "GPL-3.0-only",
-    "GPL-3.0-or-later",
-    "AGPL-1.0",
-    "AGPL-1.0+",
-    "AGPL-3.0",
-    "AGPL-3.0+",
-    "AGPL-3.0-only",
-    "AGPL-3.0-or-later",
-    "LGPL-2.0",
-    "LGPL-2.0+",
-    "LGPL-2.1",
-    "LGPL-2.1+",
-    "LGPL-3.0",
-    "LGPL-3.0+",
+    "Unicode-3.0",
 ]
 
 # License exceptions (for specific crates)
@@ -65,43 +32,16 @@ exceptions = [
     # { name = "some-crate", allow = ["MIT"] },
 ]
 
-[source]
-# Source registry configuration
-registry = "https://github.com/rust-lang/crates.io-index"
-replace-with = []
+[bans]
+# Dependency banning configuration
+multiple-versions = "warn"
 
-[source."https://github.com/rust-lang/crates.io-index"]
-replace-with = "crates-io"
-
-[source.crates-io]
-registry = "https://github.com/rust-lang/crates.io-index"
-
-# Git sources (if any)
-[source."https://github.com/your-org/private-registry"]
-registry = "https://github.com/your-org/private-registry"
-
-[target.'cfg(all())']
-# Target-specific configuration
-allow = [
-    "MIT",
-    "Apache-2.0",
+# Banned dependencies
+deny = [
+    # Add any banned dependencies here
 ]
 
-[target.'cfg(windows)']
-# Windows-specific configuration
-allow = [
-    "MIT",
-    "Apache-2.0",
-    "BSD-2-Clause",
-    "BSD-3-Clause",
-]
-
-[target.'cfg(unix)']
-# Unix-specific configuration
-allow = [
-    "MIT",
-    "Apache-2.0",
-    "BSD-2-Clause",
-    "BSD-3-Clause",
-    "ISC",
+# Skip specific dependencies from checks
+skip = [
+    # Add any dependencies to skip here
 ]
