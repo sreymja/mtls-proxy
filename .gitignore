@@ -9,3 +9,9 @@
 .DS_Store
 */__pycache__/
 __pycache__
+
+# Certificate files (generated for testing)
+certs/*.crt
+certs/*.key
+certs/*.srl
+certs/*.csr

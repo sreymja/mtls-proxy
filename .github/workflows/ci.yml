@@ -66,13 +66,19 @@ jobs:
         # Windows dependencies are handled by rustup
         echo "Windows dependencies handled by rustup"
 
-    - name: Generate test certificates
+    - name: Generate test certificates (Unix)
+      if: matrix.os != 'windows-latest'
       run: |
-        mkdir -p certs
-        # Generate self-signed certificates for testing
-        openssl req -x509 -newkey rsa:4096 -keyout certs/client.key -out certs/client.crt -days 365 -nodes -subj "/CN=test-client"
-        openssl req -x509 -newkey rsa:4096 -keyout certs/ca.key -out certs/ca.crt -days 365 -nodes -subj "/CN=test-ca"
-        chmod 600 certs/*.key
+        # Use the existing certificate generation script
+        chmod +x scripts/generate_certs.sh
+        ./scripts/generate_certs.sh
+
+    - name: Generate test certificates (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        # Use the PowerShell certificate generation script
+        .\scripts\generate_certs.ps1
 
     - name: Fix lock file compatibility
       run: |
