@@ -33,9 +33,12 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install Rust toolchain
+      env:
+        RUST_VERSION: ${{ matrix.rust }}
       run: |
         # Manual Rust installation with retry logic
         echo "Installing Rust toolchain with retry logic..."
+        echo "Target Rust version: $RUST_VERSION"
         
         # Try multiple installation methods
         for method in 1 2 3; do
@@ -44,13 +47,13 @@ jobs:
           case $method in
             1)
               # Method 1: Using curl with rustup-init
-              curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain ${{ matrix.rust }} --component rustfmt --component clippy --no-modify-path
+              curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain "$RUST_VERSION" --component rustfmt --component clippy --no-modify-path
               ;;
             2)
               # Method 2: Using wget with rustup-init
               wget -O rustup-init.sh https://sh.rustup.rs
               chmod +x rustup-init.sh
-              ./rustup-init.sh -y --default-toolchain ${{ matrix.rust }} --component rustfmt --component clippy --no-modify-path
+              ./rustup-init.sh -y --default-toolchain "$RUST_VERSION" --component rustfmt --component clippy --no-modify-path
               ;;
             3)
               # Method 3: Using the official action as last resort
