@@ -180,7 +180,7 @@ jobs:
 
     - name: Install Rust toolchain
       env:
-        RUST_VERSION: ${{ matrix.rust }}
+        RUST_VERSION: stable
       run: |
         # Manual Rust installation with retry logic
         echo "Installing Rust toolchain with retry logic..."
@@ -237,7 +237,7 @@ jobs:
       if: failure()
       uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: ${{ matrix.rust }}
+        toolchain: stable
         components: rustfmt, clippy
         timeout-minutes: 30
 
@@ -278,7 +278,7 @@ jobs:
 
     - name: Install Rust toolchain
       env:
-        RUST_VERSION: ${{ matrix.rust }}
+        RUST_VERSION: stable
       run: |
         # Manual Rust installation with retry logic
         echo "Installing Rust toolchain with retry logic..."
@@ -335,7 +335,7 @@ jobs:
       if: failure()
       uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: ${{ matrix.rust }}
+        toolchain: stable
         components: rustfmt, clippy
         timeout-minutes: 30
 
@@ -636,7 +636,7 @@ jobs:
 
     - name: Install Rust toolchain
       env:
-        RUST_VERSION: ${{ matrix.rust }}
+        RUST_VERSION: stable
       run: |
         # Manual Rust installation with retry logic
         echo "Installing Rust toolchain with retry logic..."
@@ -693,7 +693,7 @@ jobs:
       if: failure()
       uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: ${{ matrix.rust }}
+        toolchain: stable
         components: rustfmt, clippy
         timeout-minutes: 30
 
