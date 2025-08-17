@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 use std::sync::Arc;
-use tokio_rustls::{TlsConnector, TlsAcceptor};
+use tokio_rustls::{TlsAcceptor, TlsConnector};
 
 pub struct TlsClient {
     pub(crate) connector: TlsConnector,
@@ -71,15 +71,15 @@ impl TlsServer {
     ) -> Result<Self> {
         // Load server certificate
         let server_cert = load_certificate(cert_path)?;
-        
+
         // Load server private key
         let server_key = load_private_key(key_path)?;
-        
+
         // Create server config
         let server_config = if require_client_cert {
             // Create root certificate store for client verification
             let mut root_store = RootCertStore::empty();
-            
+
             // Add CA certificate if provided
             if let Some(ca_path) = ca_cert_path {
                 let ca_certs = load_certificates(ca_path)?;
@@ -87,10 +87,12 @@ impl TlsServer {
                     root_store.add(&cert)?;
                 }
             }
-            
+
             ServerConfig::builder()
                 .with_safe_defaults()
-                .with_client_cert_verifier(std::sync::Arc::new(danger::ClientCertVerifier::new(root_store)))
+                .with_client_cert_verifier(std::sync::Arc::new(danger::ClientCertVerifier::new(
+                    root_store,
+                )))
                 .with_single_cert(vec![server_cert], server_key)?
         } else {
             ServerConfig::builder()
@@ -104,7 +106,7 @@ impl TlsServer {
         config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
 
         let acceptor = TlsAcceptor::from(Arc::new(config));
-        
+
         Ok(Self { acceptor })
     }
 

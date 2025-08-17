@@ -100,8 +100,16 @@ impl ProxyServer {
         // Initialize TLS server for HTTPS connections (only if TLS is enabled)
         let tls_server = if config.server.enable_tls {
             Some(TlsServer::new(
-                &config.tls.server_cert_path.clone().unwrap_or_else(|| std::path::PathBuf::from("certs/server.crt")),
-                &config.tls.server_key_path.clone().unwrap_or_else(|| std::path::PathBuf::from("certs/server.key")),
+                &config
+                    .tls
+                    .server_cert_path
+                    .clone()
+                    .unwrap_or_else(|| std::path::PathBuf::from("certs/server.crt")),
+                &config
+                    .tls
+                    .server_key_path
+                    .clone()
+                    .unwrap_or_else(|| std::path::PathBuf::from("certs/server.key")),
                 config.tls.ca_cert_path.as_deref(),
                 config.tls.require_client_cert.unwrap_or(false), // require client cert based on config
             )?)
@@ -160,7 +168,7 @@ impl ProxyServer {
         // Create TCP listener
         let listener = tokio::net::TcpListener::bind(addr).await?;
         let tls_acceptor = self.tls_server.as_ref().unwrap().acceptor().clone();
-        
+
         // Start the server with TLS
         loop {
             tokio::select! {
@@ -169,7 +177,7 @@ impl ProxyServer {
                         Ok((stream, addr)) => {
                             let tls_acceptor = tls_acceptor.clone();
                             let routes = routes.clone();
-                            
+
                             tokio::spawn(async move {
                                 if let Err(e) = handle_tls_connection(stream, addr, tls_acceptor, routes).await {
                                     tracing::error!("Connection error: {}", e);
@@ -201,9 +209,7 @@ impl ProxyServer {
         routes: impl Filter<Extract = impl warp::Reply> + Clone + Send + Sync + 'static,
     ) -> Result<()> {
         // Start the server with HTTP using Warp
-        warp::serve(routes)
-            .run(addr)
-            .await;
+        warp::serve(routes).run(addr).await;
 
         Ok(())
     }
@@ -217,25 +223,25 @@ async fn handle_tls_connection(
 ) -> Result<()> {
     // Accept TLS connection
     let tls_stream = tls_acceptor.accept(stream).await?;
-    
+
     // Create a simple HTTP service that returns a basic response
     let service = service_fn(|req: hyper::Request<hyper::Body>| async move {
         tracing::info!("Received request: {} {}", req.method(), req.uri());
-        
+
         // For now, return a simple response
         let response = hyper::Response::builder()
             .status(200)
             .header("Content-Type", "application/json")
-            .body(hyper::Body::from(r#"{"status":"ok","message":"HTTPS proxy working"}"#))
+            .body(hyper::Body::from(
+                r#"{"status":"ok","message":"HTTPS proxy working"}"#,
+            ))
             .unwrap();
-        
+
         Ok::<_, hyper::Error>(response)
     });
 
     // Serve the connection using Hyper
-    Http::new()
-        .serve_connection(tls_stream, service)
-        .await?;
+    Http::new().serve_connection(tls_stream, service).await?;
 
     Ok(())
 }

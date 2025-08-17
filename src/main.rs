@@ -55,7 +55,7 @@ async fn main() -> Result<()> {
     if let Some(timeout) = cli.timeout {
         config.target.timeout_secs = timeout;
     }
-    
+
     // Handle TLS enable/disable flags
     if cli.disable_tls {
         config.server.enable_tls = false;
