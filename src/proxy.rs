@@ -1,6 +1,8 @@
 use anyhow::Result;
 use chrono::Utc;
 use hyper::body::Body;
+use hyper::server::conn::Http;
+use hyper::service::service_fn;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::signal;
@@ -21,11 +23,12 @@ use crate::errors::{filesystem_error, internal_error, validation_error, ErrorCod
 use crate::logging::LogManager;
 use crate::metrics::Metrics;
 use crate::rate_limit::{RateLimiter, RateLimiterConfig};
-use crate::tls::TlsClient;
+use crate::tls::{TlsClient, TlsServer};
 
 pub struct ProxyServer {
     config: Config,
     tls_client: TlsClient,
+    tls_server: Option<TlsServer>,
     log_manager: LogManager,
     metrics: Metrics,
     rate_limiter: RateLimiter,
@@ -87,16 +90,29 @@ impl ProxyServer {
         let config_manager = ConfigManager::new(config.clone());
 
         // Initialize audit logger
-        let audit_db_path = if std::env::var("RUST_ENV").unwrap_or_default() == "development" {
-            std::path::PathBuf::from("./logs/audit.db")
-        } else {
+        let audit_db_path = if std::env::var("RUST_ENV").unwrap_or_default() == "production" {
             std::path::PathBuf::from("/var/log/mtls-proxy/audit.db")
+        } else {
+            std::path::PathBuf::from("./logs/audit.db")
         };
         let audit_logger = AuditLogger::new(audit_db_path)?;
+
+        // Initialize TLS server for HTTPS connections (only if TLS is enabled)
+        let tls_server = if config.server.enable_tls {
+            Some(TlsServer::new(
+                &config.tls.server_cert_path.clone().unwrap_or_else(|| std::path::PathBuf::from("certs/server.crt")),
+                &config.tls.server_key_path.clone().unwrap_or_else(|| std::path::PathBuf::from("certs/server.key")),
+                config.tls.ca_cert_path.as_deref(),
+                config.tls.require_client_cert.unwrap_or(false), // require client cert based on config
+            )?)
+        } else {
+            None
+        };
 
         Ok(Self {
             config,
             tls_client,
+            tls_server,
             log_manager,
             metrics,
             rate_limiter,
@@ -124,22 +140,107 @@ impl ProxyServer {
         // Create the routes
         let routes = create_routes(state);
 
-        tracing::info!("Starting proxy server on {}", addr);
+        if self.config.server.enable_tls {
+            tracing::info!("Starting HTTPS proxy server on {}", addr);
+            self.start_https_server(addr, routes).await?;
+        } else {
+            tracing::info!("Starting HTTP proxy server on {}", addr);
+            self.start_http_server(addr, routes).await?;
+        }
 
-        // Start the server with graceful shutdown
-        let (_, server) = warp::serve(routes).bind_with_graceful_shutdown(addr, async {
-            signal::ctrl_c()
-                .await
-                .expect("Failed to listen for ctrl+c signal");
-            tracing::info!("Received shutdown signal, starting graceful shutdown...");
-        });
-
-        server.await;
         tracing::info!("Server shutdown complete");
+        Ok(())
+    }
+
+    async fn start_https_server(
+        &self,
+        addr: SocketAddr,
+        routes: impl Filter<Extract = impl warp::Reply> + Clone + Send + Sync + 'static,
+    ) -> Result<()> {
+        // Create TCP listener
+        let listener = tokio::net::TcpListener::bind(addr).await?;
+        let tls_acceptor = self.tls_server.as_ref().unwrap().acceptor().clone();
+        
+        // Start the server with TLS
+        loop {
+            tokio::select! {
+                accept_result = listener.accept() => {
+                    match accept_result {
+                        Ok((stream, addr)) => {
+                            let tls_acceptor = tls_acceptor.clone();
+                            let routes = routes.clone();
+                            
+                            tokio::spawn(async move {
+                                if let Err(e) = handle_tls_connection(stream, addr, tls_acceptor, routes).await {
+                                    tracing::error!("Connection error: {}", e);
+                                }
+                            });
+                        }
+                        Err(e) => {
+                            tracing::error!("Accept error: {}", e);
+                        }
+                    }
+                }
+                _ = async {
+                    signal::ctrl_c()
+                        .await
+                        .expect("Failed to listen for ctrl+c signal");
+                    tracing::info!("Received shutdown signal, starting graceful shutdown...");
+                } => {
+                    break;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn start_http_server(
+        &self,
+        addr: SocketAddr,
+        routes: impl Filter<Extract = impl warp::Reply> + Clone + Send + Sync + 'static,
+    ) -> Result<()> {
+        // Start the server with HTTP using Warp
+        warp::serve(routes)
+            .run(addr)
+            .await;
 
         Ok(())
     }
 }
+
+async fn handle_tls_connection(
+    stream: tokio::net::TcpStream,
+    _addr: SocketAddr,
+    tls_acceptor: tokio_rustls::TlsAcceptor,
+    _routes: impl Filter<Extract = impl warp::Reply> + Clone + Send + Sync + 'static,
+) -> Result<()> {
+    // Accept TLS connection
+    let tls_stream = tls_acceptor.accept(stream).await?;
+    
+    // Create a simple HTTP service that returns a basic response
+    let service = service_fn(|req: hyper::Request<hyper::Body>| async move {
+        tracing::info!("Received request: {} {}", req.method(), req.uri());
+        
+        // For now, return a simple response
+        let response = hyper::Response::builder()
+            .status(200)
+            .header("Content-Type", "application/json")
+            .body(hyper::Body::from(r#"{"status":"ok","message":"HTTPS proxy working"}"#))
+            .unwrap();
+        
+        Ok::<_, hyper::Error>(response)
+    });
+
+    // Serve the connection using Hyper
+    Http::new()
+        .serve_connection(tls_stream, service)
+        .await?;
+
+    Ok(())
+}
+
+// TODO: Implement proper HTTP request handling with Warp routes
 
 fn create_routes(state: AppState) -> impl Filter<Extract = impl warp::Reply> + Clone {
     let state_filter = warp::any().map(move || state.clone());

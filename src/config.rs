@@ -16,6 +16,7 @@ pub struct Config {
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
+    pub enable_tls: bool,
     pub max_connections: usize,
     pub connection_timeout_secs: u64,
     pub connection_pool_size: usize,
@@ -31,6 +32,9 @@ pub struct TlsConfig {
     pub client_key_path: PathBuf,
     pub ca_cert_path: Option<PathBuf>,
     pub verify_hostname: bool,
+    pub server_cert_path: Option<PathBuf>,
+    pub server_key_path: Option<PathBuf>,
+    pub require_client_cert: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,22 +93,24 @@ impl Config {
             anyhow::bail!("Max concurrent requests cannot be 0");
         }
 
-        // Validate TLS configuration
-        if !self.tls.client_cert_path.exists() {
-            anyhow::bail!(
-                "Client certificate file does not exist: {}",
-                self.tls.client_cert_path.display()
-            );
-        }
-        if !self.tls.client_key_path.exists() {
-            anyhow::bail!(
-                "Client key file does not exist: {}",
-                self.tls.client_key_path.display()
-            );
-        }
-        if let Some(ref ca_path) = self.tls.ca_cert_path {
-            if !ca_path.exists() {
-                anyhow::bail!("CA certificate file does not exist: {}", ca_path.display());
+        // Validate TLS configuration (only if TLS is enabled)
+        if self.server.enable_tls {
+            if !self.tls.client_cert_path.exists() {
+                anyhow::bail!(
+                    "Client certificate file does not exist: {}",
+                    self.tls.client_cert_path.display()
+                );
+            }
+            if !self.tls.client_key_path.exists() {
+                anyhow::bail!(
+                    "Client key file does not exist: {}",
+                    self.tls.client_key_path.display()
+                );
+            }
+            if let Some(ref ca_path) = self.tls.ca_cert_path {
+                if !ca_path.exists() {
+                    anyhow::bail!("CA certificate file does not exist: {}", ca_path.display());
+                }
             }
         }
 
@@ -136,7 +142,8 @@ impl Default for Config {
         Self {
             server: ServerConfig {
                 host: "127.0.0.1".to_string(),
-                port: 8443,
+                port: 8440,
+                enable_tls: false,
                 max_connections: 1000,
                 connection_timeout_secs: 30,
                 connection_pool_size: 10,
@@ -150,6 +157,9 @@ impl Default for Config {
                 client_key_path: PathBuf::from("certs/client.key"),
                 ca_cert_path: None,
                 verify_hostname: true,
+                server_cert_path: None,
+                server_key_path: None,
+                require_client_cert: None,
             },
             logging: LoggingConfig {
                 log_dir: PathBuf::from("logs"),
@@ -159,7 +169,7 @@ impl Default for Config {
                 sqlite_db_path: PathBuf::from("logs/proxy_logs.db"),
             },
             target: TargetConfig {
-                base_url: "https://gpt-4o-mini.internal:443".to_string(),
+                base_url: "https://127.0.0.1:8444".to_string(),
                 timeout_secs: 60,
             },
             ui: Some(UiConfig {

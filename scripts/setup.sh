@@ -92,7 +92,7 @@ create_local_config() {
 
 [server]
 # host = "0.0.0.0"  # Uncomment to bind to all interfaces
-# port = 8080
+# port = 8440
 
 [tls]
 # client_cert_path = "certs/client.crt"

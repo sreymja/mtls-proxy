@@ -9,7 +9,7 @@ echo "🧪 Testing mTLS Proxy Configuration Management Features"
 echo "========================================================"
 
 # Configuration
-BASE_URL="http://localhost:8443"
+BASE_URL="http://localhost:8440"
 AUTH_HEADER="Authorization: Basic $(echo -n 'admin:admin123' | base64)"
 
 # Colors for output

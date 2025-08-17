@@ -53,6 +53,14 @@ pub struct Cli {
     /// Show configuration and exit
     #[arg(long)]
     pub show_config: bool,
+
+    /// Disable TLS for incoming connections (use HTTP instead of HTTPS)
+    #[arg(long)]
+    pub disable_tls: bool,
+
+    /// Enable TLS for incoming connections (use HTTPS instead of HTTP)
+    #[arg(long)]
+    pub enable_tls: bool,
 }
 
 impl Cli {

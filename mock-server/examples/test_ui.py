@@ -10,7 +10,7 @@ import time
 from typing import Dict, Any
 
 class MockServerUITester:
-    def __init__(self, base_url: str = "https://localhost:8443"):
+    def __init__(self, base_url: str = "https://localhost:8444"):
         self.base_url = base_url.rstrip('/')
         self.session = requests.Session()
         # Disable SSL verification for testing

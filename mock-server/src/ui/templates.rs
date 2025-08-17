@@ -83,19 +83,6 @@ pub fn dashboard_template(stats: &Value, _config: &Config) -> String {
     </div>
     
     <script src="/ui/static/script.js"></script>
-    <script>
-        // Initialize dashboard with stats
-        const stats = {};
-        updateDashboard(stats);
-        
-        // Auto-refresh every 30 seconds
-        setInterval(() => {{
-            fetch('/ui/api/stats')
-                .then(response => response.json())
-                .then(data => updateDashboard(data))
-                .catch(console.error);
-        }}, 30000);
-    </script>
 </body>
 </html>
 "#,
@@ -398,12 +385,6 @@ pub fn health_template(health: &Value) -> String {
     </div>
     
     <script src="/ui/static/script.js"></script>
-    <script>
-        // Auto-refresh health status every 10 seconds
-        setInterval(() => {{
-            location.reload();
-        }}, 10000);
-    </script>
 </body>
 </html>
 "#,

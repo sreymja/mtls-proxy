@@ -27,8 +27,8 @@ sleep 2
 
 # Test health endpoint
 echo "Testing health endpoint..."
-HEALTH_RESPONSE=$(curl -s http://localhost:8080/health)
-if [[ $HEALTH_RESPONSE == *"healthy"* ]]; then
+HEALTH_RESPONSE=$(curl -s http://localhost:8440/ui/health)
+if [[ $HEALTH_RESPONSE == *"Health Status"* ]]; then
     echo "✅ Health check passed"
 else
     echo "❌ Health check failed: $HEALTH_RESPONSE"
@@ -36,7 +36,7 @@ fi
 
 # Test UI endpoint
 echo "Testing UI endpoint..."
-UI_RESPONSE=$(curl -s http://localhost:8080/ui)
+UI_RESPONSE=$(curl -s http://localhost:8440/ui)
 if [[ $UI_RESPONSE == *"mTLS Proxy Dashboard"* ]]; then
     echo "✅ UI endpoint passed"
 else
@@ -45,7 +45,7 @@ fi
 
 # Test logs endpoint
 echo "Testing logs endpoint..."
-LOGS_RESPONSE=$(curl -s http://localhost:8080/ui/logs)
+LOGS_RESPONSE=$(curl -s http://localhost:8440/ui/logs)
 if [[ $LOGS_RESPONSE == *"Request Logs"* ]]; then
     echo "✅ Logs endpoint passed"
 else
@@ -54,7 +54,7 @@ fi
 
 # Test API logs endpoint
 echo "Testing API logs endpoint..."
-API_LOGS_RESPONSE=$(curl -s http://localhost:8080/ui/api/logs)
+API_LOGS_RESPONSE=$(curl -s http://localhost:8440/ui/api/logs)
 if [[ $API_LOGS_RESPONSE == *"requests"* ]]; then
     echo "✅ API logs endpoint passed"
 else
@@ -63,7 +63,7 @@ fi
 
 # Test proxy endpoint (this will fail without a target server, but should return an error)
 echo "Testing proxy endpoint..."
-PROXY_RESPONSE=$(curl -s -w "%{http_code}" http://localhost:8080/test -o /dev/null)
+PROXY_RESPONSE=$(curl -s -w "%{http_code}" http://localhost:8440/test -o /dev/null)
 if [ "$PROXY_RESPONSE" = "502" ] || [ "$PROXY_RESPONSE" = "504" ]; then
     echo "✅ Proxy endpoint returned expected error code: $PROXY_RESPONSE"
 else

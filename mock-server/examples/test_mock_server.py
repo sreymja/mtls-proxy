@@ -11,7 +11,7 @@ import ssl
 from typing import Dict, Any
 
 class MockServerTester:
-    def __init__(self, base_url: str = "https://localhost:8443", verify_ssl: bool = False):
+    def __init__(self, base_url: str = "https://localhost:8444", verify_ssl: bool = False):
         self.base_url = base_url.rstrip('/')
         self.session = requests.Session()
         

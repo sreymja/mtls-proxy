@@ -3,7 +3,7 @@
 # Test script for UI refactoring
 # This script tests that all UI pages are working with the new embedded CSS approach
 
-BASE_URL="http://localhost:8443"
+BASE_URL="http://localhost:8440"
 echo "🧪 Testing mTLS Proxy UI Refactoring"
 echo "====================================="
 

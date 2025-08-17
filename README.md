@@ -60,7 +60,7 @@ cargo install --git https://github.com/your-org/mtls-proxy.git
 
 ```bash
 docker pull your-org/mtls-proxy:latest
-docker run -p 8080:8080 -v $(pwd)/config:/app/config -v $(pwd)/certs:/app/certs your-org/mtls-proxy:latest
+docker run -p 8440:8440 -v $(pwd)/config:/app/config -v $(pwd)/certs:/app/certs your-org/mtls-proxy:latest
 ```
 
 ## 🚀 Quick Start
@@ -94,22 +94,24 @@ mtls-proxy --config /path/to/config.toml
 ### 3. Access the Web Interface
 
 Open your browser and navigate to:
-- **Dashboard**: http://127.0.0.1:8080/ui
-- **Configuration**: http://127.0.0.1:8080/ui/config
-- **Logs**: http://127.0.0.1:8080/ui/logs
-- **Audit**: http://127.0.0.1:8080/ui/audit
+- **Dashboard**: http://127.0.0.1:8440/ui
+- **Configuration**: http://127.0.0.1:8440/ui/config
+- **Logs**: http://127.0.0.1:8440/ui/logs
+- **Audit**: http://127.0.0.1:8440/ui/audit
+
+**Note**: The proxy server runs in HTTP mode by default. To enable HTTPS mode, use the `--enable-tls` flag.
 
 ### 4. Test the API
 
 ```bash
 # Health check
-curl http://127.0.0.1:8080/health
+curl http://127.0.0.1:8440/ui/health
 
 # Validate configuration
-curl http://127.0.0.1:8080/ui/api/config/validate
+curl http://127.0.0.1:8440/ui/api/config/validate
 
 # List certificates
-curl http://127.0.0.1:8080/ui/api/certificates/list
+curl http://127.0.0.1:8440/ui/api/certificates/list
 ```
 
 ## ⚙️ Configuration
@@ -121,7 +123,8 @@ The mTLS proxy uses TOML configuration files. The default configuration is locat
 ```toml
 [server]
 host = "127.0.0.1"
-port = 8443
+port = 8440
+enable_tls = false
 max_connections = 1000
 rate_limit_requests_per_second = 100
 
@@ -146,12 +149,33 @@ retention_days = 30
 You can override configuration values using environment variables:
 
 ```bash
-export MTLS_PROXY_SERVER_PORT=8443
+export MTLS_PROXY_SERVER_PORT=8440
 export MTLS_PROXY_TARGET_BASE_URL="https://api.example.com"
 export MTLS_PROXY_LOGGING_LOG_DIR="/var/log/mtls-proxy"
 ```
 
 For detailed configuration options, see the [User Guide](docs/USER_GUIDE.md#configuration).
+
+## 🔄 Server Modes
+
+The mTLS proxy supports two modes of operation:
+
+### HTTP Mode (Default)
+- **Port**: 8440
+- **Protocol**: HTTP
+- **Use Case**: Development, testing, and internal networks
+- **Command**: `mtls-proxy` or `mtls-proxy --disable-tls`
+
+### HTTPS Mode
+- **Port**: 8443 (or custom)
+- **Protocol**: HTTPS with mTLS support
+- **Use Case**: Production environments requiring encryption
+- **Command**: `mtls-proxy --enable-tls --port 8443`
+
+### Port Strategy
+- **8440**: HTTP proxy server (default)
+- **8443**: HTTPS proxy server (when TLS enabled)
+- **8444**: Mock server for testing (HTTPS)
 
 ## 📚 API Documentation
 
@@ -169,21 +193,21 @@ The mTLS proxy provides a comprehensive REST API for programmatic access.
 
 ```bash
 # Update configuration
-curl -X POST http://127.0.0.1:8080/ui/api/config/update \
+curl -X POST http://127.0.0.1:8440/ui/api/config/update \
   -H "Content-Type: application/json" \
   -d '{
     "server": {
-      "port": 8443,
+      "port": 8440,
       "max_connections": 1000
     }
   }'
 
 # Upload certificate
-curl -X POST http://127.0.0.1:8080/ui/api/certificates/upload \
+curl -X POST http://127.0.0.1:8440/ui/api/certificates/upload \
   -F "certificate=@/path/to/certificate.crt"
 
 # Get audit logs
-curl "http://127.0.0.1:8080/ui/api/audit/logs?limit=10&offset=0"
+curl "http://127.0.0.1:8440/ui/api/audit/logs?limit=10&offset=0"
 ```
 
 For complete API documentation, see the [API Documentation](docs/API_DOCUMENTATION.md).
@@ -203,10 +227,10 @@ The mTLS proxy includes a modern web interface for easy configuration and monito
 
 ### Accessing the Interface
 
-- **Main Dashboard**: http://127.0.0.1:8080/ui
-- **Configuration**: http://127.0.0.1:8080/ui/config
-- **Logs**: http://127.0.0.1:8080/ui/logs
-- **Audit**: http://127.0.0.1:8080/ui/audit
+- **Main Dashboard**: http://127.0.0.1:8440/ui
+- **Configuration**: http://127.0.0.1:8440/ui/config
+- **Logs**: http://127.0.0.1:8440/ui/logs
+- **Audit**: http://127.0.0.1:8440/ui/audit
 
 ## 🧪 Testing
 
@@ -321,6 +345,8 @@ We welcome contributions! Please see our [Contributing Guidelines](docs/DEVELOPE
 - ✅ **Phase 2.2**: Performance testing (4 performance tests)
 - ✅ **Phase 2.3**: Security testing (6 security tests)
 - ✅ **Phase 3.1**: Documentation (API, User, Developer guides)
+- ✅ **HTTPS to HTTP Conversion**: [Conversion Documentation](docs/HTTPS_TO_HTTP_CONVERSION.md)
+- ✅ **Project Completion**: [Project Summary](docs/PROJECT_COMPLETION_SUMMARY.md)
 
 ### Current Status
 

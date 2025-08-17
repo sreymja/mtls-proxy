@@ -1,0 +1,394 @@
+# Test Requests for mTLS Proxy - GPT-4o Chat Completions API
+# This file contains HTTP requests for testing the proxy server with the mock GPT server
+
+# Set base URL and headers for all requests
+@baseUrl = http://127.0.0.1:8440
+@contentType = application/json
+@authorization = Bearer sk-test-your-api-key-here
+
+### Test 1: Basic Chat Completion with GPT-4o
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant."
+    },
+    {
+      "role": "user",
+      "content": "Hello! How are you today?"
+    }
+  ],
+  "max_tokens": 150,
+  "temperature": 0.7
+}
+
+### Test 2: Chat Completion with GPT-4o-mini
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o-mini",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Explain quantum computing in simple terms."
+    }
+  ],
+  "max_tokens": 200,
+  "temperature": 0.5
+}
+
+### Test 3: Streaming Chat Completion
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a coding assistant. Provide clear, concise explanations."
+    },
+    {
+      "role": "user",
+      "content": "Write a simple Python function to calculate fibonacci numbers."
+    }
+  ],
+  "stream": true,
+  "max_tokens": 300,
+  "temperature": 0.3
+}
+
+### Test 4: Multi-turn Conversation
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant that provides detailed explanations."
+    },
+    {
+      "role": "user",
+      "content": "What is machine learning?"
+    },
+    {
+      "role": "assistant",
+      "content": "Machine learning is a subset of artificial intelligence that enables computers to learn and improve from experience without being explicitly programmed."
+    },
+    {
+      "role": "user",
+      "content": "Can you give me some examples of machine learning applications?"
+    }
+  ],
+  "max_tokens": 250,
+  "temperature": 0.7
+}
+
+### Test 5: Function Calling Example
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What's the weather like in San Francisco?"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "description": "Get the current weather in a given location",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "location": {
+              "type": "string",
+              "description": "The city and state, e.g. San Francisco, CA"
+            },
+            "unit": {
+              "type": "string",
+              "enum": ["celsius", "fahrenheit"]
+            }
+          },
+          "required": ["location"]
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto",
+  "max_tokens": 150
+}
+
+### Test 6: High Temperature (More Creative)
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Write a short creative story about a robot learning to paint."
+    }
+  ],
+  "max_tokens": 200,
+  "temperature": 0.9,
+  "top_p": 0.9
+}
+
+### Test 7: Low Temperature (More Focused)
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What are the three main principles of object-oriented programming?"
+    }
+  ],
+  "max_tokens": 150,
+  "temperature": 0.1
+}
+
+### Test 8: With Stop Sequences
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "user",
+      "content": "List the first 5 prime numbers:"
+    }
+  ],
+  "max_tokens": 100,
+  "temperature": 0.3,
+  "stop": ["\n\n", "END"]
+}
+
+### Test 9: With Presence and Frequency Penalties
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Write a paragraph about renewable energy sources."
+    }
+  ],
+  "max_tokens": 150,
+  "temperature": 0.7,
+  "presence_penalty": 0.1,
+  "frequency_penalty": 0.1
+}
+
+### Test 10: Error Test - Invalid Model
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-5",
+  "messages": [
+    {
+      "role": "user",
+      "content": "This should fail because gpt-5 doesn't exist."
+    }
+  ],
+  "max_tokens": 50
+}
+
+### Test 11: Error Test - Missing Messages
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o",
+  "max_tokens": 50
+}
+
+### Test 12: Error Test - Invalid JSON
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "user",
+      "content": "This is a test"
+    }
+  ],
+  "max_tokens": 50,
+  "invalid_field": "this should cause an error"
+}
+
+### Test 13: Models List Request
+GET {{baseUrl}}/v1/models
+Authorization: {{authorization}}
+
+### Test 14: Health Check
+GET {{baseUrl}}/health
+
+### Test 15: Complex Conversation with Code
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are an expert software engineer. Provide code examples when appropriate."
+    },
+    {
+      "role": "user",
+      "content": "I need to implement a REST API in Rust using Actix-web. Can you show me a basic example?"
+    }
+  ],
+  "max_tokens": 400,
+  "temperature": 0.5
+}
+
+### Test 16: Large Context Window Test
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant that provides detailed responses."
+    },
+    {
+      "role": "user",
+      "content": "Please provide a comprehensive overview of web development technologies, including frontend frameworks, backend technologies, databases, and deployment strategies. Include specific examples and best practices for each category."
+    }
+  ],
+  "max_tokens": 500,
+  "temperature": 0.7
+}
+
+### Test 17: Streaming with Function Calling
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What's the current time in Tokyo?"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_current_time",
+        "description": "Get the current time in a specific timezone",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "timezone": {
+              "type": "string",
+              "description": "The timezone to get the time for"
+            }
+          },
+          "required": ["timezone"]
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto",
+  "stream": true,
+  "max_tokens": 150
+}
+
+### Test 18: Response Format Specification
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Provide information about the solar system planets in JSON format."
+    }
+  ],
+  "response_format": {
+    "type": "json_object"
+  },
+  "max_tokens": 300,
+  "temperature": 0.3
+}
+
+### Test 19: Seed for Reproducible Results
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Generate a random number between 1 and 100."
+    }
+  ],
+  "seed": 42,
+  "max_tokens": 50,
+  "temperature": 0.7
+}
+
+### Test 20: Logprobs for Token Analysis
+POST {{baseUrl}}/v1/chat/completions
+Content-Type: {{contentType}}
+Authorization: {{authorization}}
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Complete this sentence: The quick brown fox..."
+    }
+  ],
+  "logprobs": true,
+  "top_logprobs": 3,
+  "max_tokens": 20,
+  "temperature": 0.5
+}

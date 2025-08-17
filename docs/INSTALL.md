@@ -67,7 +67,7 @@ sudo systemctl status mtls-proxy
 ### **5. Verify Installation**
 ```bash
 # Test health endpoint
-curl http://localhost:8443/health
+curl http://localhost:8440/ui/health
 
 # Expected response:
 # {"status":"healthy","service":"mtls-proxy"}
@@ -79,7 +79,7 @@ curl http://localhost:8443/health
 
 ### **1. Access the Web Interface**
 - Open your web browser
-- Navigate to: `http://your-server:8443/ui`
+- Navigate to: `http://your-server:8440/ui`
 - Login with default credentials:
   - **Username**: `admin`
   - **Password**: `admin123`
@@ -146,11 +146,11 @@ curl http://localhost:8443/health
 ### **1. Firewall Configuration**
 ```bash
 # Allow HTTP traffic to proxy (if needed)
-sudo firewall-cmd --permanent --add-port=8443/tcp
+sudo firewall-cmd --permanent --add-port=8440/tcp
 sudo firewall-cmd --reload
 
 # Or restrict to specific IP ranges
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.1.0/24" port port="8443" protocol="tcp" accept'
+sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.1.0/24" port port="8440" protocol="tcp" accept'
 sudo firewall-cmd --reload
 ```
 

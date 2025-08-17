@@ -3,7 +3,7 @@
 
 [server]
 # host = "0.0.0.0"  # Uncomment to bind to all interfaces
-# port = 8443
+# port = 8444
 
 [tls]
 # cert_path = "certs/server.crt"

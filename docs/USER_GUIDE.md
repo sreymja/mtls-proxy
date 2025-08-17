@@ -55,7 +55,7 @@ cargo install --git https://github.com/your-org/mtls-proxy.git
 
 ```bash
 docker pull your-org/mtls-proxy:latest
-docker run -p 8080:8080 -v $(pwd)/config:/app/config -v $(pwd)/certs:/app/certs your-org/mtls-proxy:latest
+docker run -p 8440:8440 -v $(pwd)/config:/app/config -v $(pwd)/certs:/app/certs your-org/mtls-proxy:latest
 ```
 
 ### Post-Installation Setup
@@ -144,7 +144,7 @@ sqlite_db_path = "logs/proxy_logs.db"
 
 [ui]
 enabled = true
-port = 8080
+port = 8440
 ```
 
 ### Configuration Sections
@@ -205,7 +205,7 @@ Validate your configuration:
 
 ```bash
 # Using the web interface
-curl http://127.0.0.1:8080/ui/api/config/validate
+curl http://127.0.0.1:8440/ui/api/config/validate
 
 # Or check the configuration file syntax
 mtls-proxy --validate-config
@@ -237,7 +237,7 @@ BQAwXDELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMRYwFAYDVQQHDA1TYW4gRnJh
 
 ### Certificate Upload via Web Interface
 
-1. **Access the web interface**: Navigate to `http://127.0.0.1:8080/ui`
+1. **Access the web interface**: Navigate to `http://127.0.0.1:8440/ui`
 2. **Go to Configuration**: Click on "Configuration" in the navigation
 3. **Upload Certificate**: Use the file upload form to upload your certificate
 4. **Verify Upload**: Check the certificate list to confirm the upload
@@ -246,14 +246,14 @@ BQAwXDELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMRYwFAYDVQQHDA1TYW4gRnJh
 
 ```bash
 # Upload a certificate
-curl -X POST http://127.0.0.1:8080/ui/api/certificates/upload \
+curl -X POST http://127.0.0.1:8440/ui/api/certificates/upload \
   -F "certificate=@/path/to/your/certificate.crt"
 
 # List certificates
-curl http://127.0.0.1:8080/ui/api/certificates/list
+curl http://127.0.0.1:8440/ui/api/certificates/list
 
 # Delete a certificate
-curl -X DELETE http://127.0.0.1:8080/ui/api/certificates/delete \
+curl -X DELETE http://127.0.0.1:8440/ui/api/certificates/delete \
   -H "Content-Type: application/json" \
   -d '{"filename": "certificate.crt"}'
 ```
@@ -289,7 +289,7 @@ When certificates expire:
 
 ### Accessing the Web Interface
 
-The web interface is available at `http://127.0.0.1:8080/ui` by default.
+The web interface is available at `http://127.0.0.1:8440/ui` by default.
 
 ### Dashboard
 
@@ -341,7 +341,7 @@ Monitor the proxy health:
 
 ```bash
 # Basic health check
-curl http://127.0.0.1:8080/health
+curl http://127.0.0.1:8440/ui/health
 
 # Expected response
 {
@@ -356,7 +356,7 @@ curl http://127.0.0.1:8080/health
 Access Prometheus metrics:
 
 ```bash
-curl http://127.0.0.1:8080/metrics
+curl http://127.0.0.1:8440/metrics
 ```
 
 Key metrics include:
@@ -389,7 +389,7 @@ Monitor performance metrics:
 ps aux | grep mtls-proxy
 
 # Monitor network connections
-netstat -an | grep :8443
+netstat -an | grep :8440
 
 # Check disk usage
 du -sh /var/log/mtls-proxy/
@@ -465,10 +465,10 @@ sudo iptables -L
 **Solution**:
 ```bash
 # Check current rate limit settings
-curl http://127.0.0.1:8080/ui/api/config/validate
+curl http://127.0.0.1:8440/ui/api/config/validate
 
 # Adjust rate limits if needed
-curl -X POST http://127.0.0.1:8080/ui/api/config/update \
+curl -X POST http://127.0.0.1:8440/ui/api/config/update \
   -H "Content-Type: application/json" \
   -d '{"server": {"rate_limit_requests_per_second": 200}}'
 ```
@@ -503,7 +503,7 @@ export RUST_LOG=debug
 mtls-proxy
 
 # Or modify configuration
-curl -X POST http://127.0.0.1:8080/ui/api/config/update \
+curl -X POST http://127.0.0.1:8440/ui/api/config/update \
   -H "Content-Type: application/json" \
   -d '{"logging": {"log_level": "debug"}}'
 ```
@@ -540,7 +540,7 @@ top -p $(pgrep mtls-proxy)
 iftop -i eth0
 
 # Check connection pool
-netstat -an | grep :8443 | wc -l
+netstat -an | grep :8440 | wc -l
 
 # Analyze slow queries
 grep "duration" /var/log/mtls-proxy/proxy.log | sort -k2 -n

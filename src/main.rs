@@ -55,6 +55,14 @@ async fn main() -> Result<()> {
     if let Some(timeout) = cli.timeout {
         config.target.timeout_secs = timeout;
     }
+    
+    // Handle TLS enable/disable flags
+    if cli.disable_tls {
+        config.server.enable_tls = false;
+    }
+    if cli.enable_tls {
+        config.server.enable_tls = true;
+    }
 
     info!("Configuration loaded successfully");
 
@@ -62,6 +70,7 @@ async fn main() -> Result<()> {
     if cli.show_config {
         println!("Configuration:");
         println!("  Server: {}:{}", config.server.host, config.server.port);
+        println!("  TLS Enabled: {}", config.server.enable_tls);
         println!("  Max Connections: {}", config.server.max_connections);
         println!(
             "  Max Request Size: {}MB",
@@ -81,13 +90,15 @@ async fn main() -> Result<()> {
         );
 
         println!("  Target: {}", config.target.base_url);
-        println!("  Client Cert: {}", config.tls.client_cert_path.display());
-        println!("  Client Key: {}", config.tls.client_key_path.display());
-        println!(
-            "  CA Cert: {:?}",
-            config.tls.ca_cert_path.as_ref().map(|p| p.display())
-        );
-        println!("  Verify Hostname: {}", config.tls.verify_hostname);
+        if config.server.enable_tls {
+            println!("  Client Cert: {}", config.tls.client_cert_path.display());
+            println!("  Client Key: {}", config.tls.client_key_path.display());
+            println!(
+                "  CA Cert: {:?}",
+                config.tls.ca_cert_path.as_ref().map(|p| p.display())
+            );
+            println!("  Verify Hostname: {}", config.tls.verify_hostname);
+        }
         println!("  Timeout: {}s", config.target.timeout_secs);
         return Ok(());
     }

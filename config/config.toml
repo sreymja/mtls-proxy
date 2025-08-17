@@ -1,6 +1,7 @@
 [server]
 host = "127.0.0.1"
-port = 8443
+port = 8440
+enable_tls = false
 max_connections = 200
 connection_timeout_secs = 30
 connection_pool_size = 10

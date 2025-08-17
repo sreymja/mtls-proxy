@@ -1,6 +1,6 @@
 [server]
 host = "127.0.0.1"
-port = 8443
+port = 8444
 max_connections = 1000
 
 [tls]

@@ -10,8 +10,8 @@ services:
     
     # Port mappings
     ports:
-      - "8443:8443"  # Proxy port
-      - "8080:8080"  # Web interface port
+      - "8440:8440"  # HTTP proxy port (default)
+      - "8443:8443"  # HTTPS proxy port (when TLS enabled)
     
     # Volume mounts
     volumes:
@@ -30,7 +30,7 @@ services:
       - RUST_BACKTRACE=0
       # Override configuration if needed
       # - MTLS_PROXY_SERVER_HOST=0.0.0.0
-      # - MTLS_PROXY_SERVER_PORT=8443
+      # - MTLS_PROXY_SERVER_PORT=8440
       # - MTLS_PROXY_TARGET_BASE_URL=https://api.example.com
     
     # Resource limits
@@ -45,7 +45,7 @@ services:
     
     # Health check
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8440/ui/health"]
       interval: 30s
       timeout: 10s
       retries: 3

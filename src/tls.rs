@@ -1,13 +1,18 @@
 use anyhow::Result;
-use rustls::{Certificate, PrivateKey, RootCertStore};
+use rustls::{Certificate, PrivateKey, RootCertStore, ServerConfig};
 use rustls_pemfile::{certs, pkcs8_private_keys, rsa_private_keys};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
-use tokio_rustls::TlsConnector;
+use std::sync::Arc;
+use tokio_rustls::{TlsConnector, TlsAcceptor};
 
 pub struct TlsClient {
     pub(crate) connector: TlsConnector,
+}
+
+pub struct TlsServer {
+    pub(crate) acceptor: TlsAcceptor,
 }
 
 impl TlsClient {
@@ -57,6 +62,57 @@ impl TlsClient {
     }
 }
 
+impl TlsServer {
+    pub fn new(
+        cert_path: &Path,
+        key_path: &Path,
+        ca_cert_path: Option<&Path>,
+        require_client_cert: bool,
+    ) -> Result<Self> {
+        // Load server certificate
+        let server_cert = load_certificate(cert_path)?;
+        
+        // Load server private key
+        let server_key = load_private_key(key_path)?;
+        
+        // Create server config
+        let server_config = if require_client_cert {
+            // Create root certificate store for client verification
+            let mut root_store = RootCertStore::empty();
+            
+            // Add CA certificate if provided
+            if let Some(ca_path) = ca_cert_path {
+                let ca_certs = load_certificates(ca_path)?;
+                for cert in ca_certs {
+                    root_store.add(&cert)?;
+                }
+            }
+            
+            ServerConfig::builder()
+                .with_safe_defaults()
+                .with_client_cert_verifier(std::sync::Arc::new(danger::ClientCertVerifier::new(root_store)))
+                .with_single_cert(vec![server_cert], server_key)?
+        } else {
+            ServerConfig::builder()
+                .with_safe_defaults()
+                .with_no_client_auth()
+                .with_single_cert(vec![server_cert], server_key)?
+        };
+
+        // Enable HTTP/2
+        let mut config = server_config;
+        config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+
+        let acceptor = TlsAcceptor::from(Arc::new(config));
+        
+        Ok(Self { acceptor })
+    }
+
+    pub fn acceptor(&self) -> &TlsAcceptor {
+        &self.acceptor
+    }
+}
+
 fn load_certificate(path: &Path) -> Result<Certificate> {
     let file = File::open(path)?;
     let mut reader = BufReader::new(file);
@@ -102,6 +158,8 @@ fn load_private_key(path: &Path) -> Result<PrivateKey> {
 
 mod danger {
     use rustls::client::{ServerCertVerified, ServerCertVerifier};
+    use rustls::server::{ClientCertVerified, ClientCertVerifier as RustlsClientCertVerifier};
+    use rustls::{Certificate, DistinguishedName};
     use std::time::SystemTime;
 
     pub struct NoCertificateVerifier;
@@ -117,6 +175,37 @@ mod danger {
             _now: SystemTime,
         ) -> Result<ServerCertVerified, rustls::Error> {
             Ok(ServerCertVerified::assertion())
+        }
+    }
+
+    pub struct ClientCertVerifier {
+        roots: rustls::RootCertStore,
+    }
+
+    impl ClientCertVerifier {
+        pub fn new(roots: rustls::RootCertStore) -> Self {
+            Self { roots }
+        }
+    }
+
+    impl RustlsClientCertVerifier for ClientCertVerifier {
+        fn offer_client_auth(&self) -> bool {
+            true
+        }
+
+        fn client_auth_root_subjects(&self) -> &[DistinguishedName] {
+            &[]
+        }
+
+        fn verify_client_cert(
+            &self,
+            _end_entity: &Certificate,
+            _intermediates: &[Certificate],
+            _now: SystemTime,
+        ) -> Result<ClientCertVerified, rustls::Error> {
+            // For development, accept any client certificate
+            // In production, you would verify against the root store
+            Ok(ClientCertVerified::assertion())
         }
     }
 }

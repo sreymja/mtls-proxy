@@ -133,8 +133,8 @@ show_usage() {
     echo "   ./target/release/mock-gpt-server"
     echo
     echo "3. Test the server:"
-    echo "   curl -k https://localhost:8443/health"
-    echo "   curl -k https://localhost:8443/v1/models"
+    echo "   curl -k https://localhost:8444/health"
+echo "   curl -k https://localhost:8444/v1/models"
     echo
     echo "4. Test with mTLS proxy:"
     echo "   # Update proxy config to point to mock server"

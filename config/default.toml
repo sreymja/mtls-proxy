@@ -1,6 +1,7 @@
 [server]
 host = "127.0.0.1"
-port = 8443
+port = 8440
+enable_tls = false
 max_connections = 1000
 connection_timeout_secs = 30
 connection_pool_size = 10
@@ -23,7 +24,7 @@ compression_enabled = true
 sqlite_db_path = "logs/proxy_logs.db"
 
 [target]
-base_url = "https://gpt-4o-mini.internal:443"
+base_url = "https://127.0.0.1:8444"
 timeout_secs = 60
 
 [ui]
