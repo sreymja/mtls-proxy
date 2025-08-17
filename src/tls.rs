@@ -181,6 +181,7 @@ mod danger {
     }
 
     pub struct ClientCertVerifier {
+        #[allow(dead_code)]
         roots: rustls::RootCertStore,
     }
 

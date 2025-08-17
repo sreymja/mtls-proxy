@@ -60,7 +60,7 @@ async fn test_config_defaults() {
 
     assert_eq!(config.server.host, "127.0.0.1");
     assert_eq!(config.server.port, 8440);
-    assert_eq!(config.server.enable_tls, false);
+    assert!(!config.server.enable_tls);
     assert_eq!(config.server.max_connections, 1000);
     assert_eq!(config.server.connection_timeout_secs, 30);
 
