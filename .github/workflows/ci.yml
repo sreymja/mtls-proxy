@@ -168,80 +168,6 @@ jobs:
     - name: Check clippy warnings
       run: cargo clippy --all-targets --all-features -- -D warnings
 
-  # Security scanning job
-  security:
-    name: Security Scan
-    if: ${{ false }}
-    runs-on: ubuntu-latest
-    needs: test
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Install Rust toolchain
-      env:
-        RUST_VERSION: stable
-      run: |
-        # Manual Rust installation with retry logic
-        echo "Installing Rust toolchain with retry logic..."
-        echo "Target Rust version: $RUST_VERSION"
-        
-        # Try multiple installation methods
-        for method in 1 2 3; do
-          echo "Trying installation method $method..."
-        
-          case $method in
-            1)
-              # Method 1: Using curl with rustup-init
-              curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain "$RUST_VERSION" --component rustfmt --component clippy --no-modify-path
-              ;;
-            2)
-              # Method 2: Using wget with rustup-init
-              wget -O rustup-init.sh https://sh.rustup.rs
-              chmod +x rustup-init.sh
-              ./rustup-init.sh -y --default-toolchain "$RUST_VERSION" --component rustfmt --component clippy --no-modify-path
-              ;;
-            3)
-              # Method 3: Using the official action as last resort
-              echo "Trying official action as last resort..."
-              # This will be handled by the next step if this fails
-              ;;
-          esac
-        
-          # Check if installation was successful
-          if command -v rustc &> /dev/null; then
-            echo "Rust installation successful with method $method"
-            break
-          fi
-        
-          echo "Method $method failed, waiting 30 seconds before next attempt..."
-          sleep 30
-        done
-        
-        # Add to PATH
-        source $HOME/.cargo/env
-        
-        # Verify installation
-        rustc --version
-        cargo --version
-        rustfmt --version
-        cargo clippy --version
-        
-        # If still not installed, try the official action as last resort
-        if ! command -v rustc &> /dev/null; then
-          echo "Manual installation failed, trying official action..."
-          # This will be handled by the next step
-        fi
-
-    - name: Install Rust toolchain (Fallback)
-      if: failure()
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: stable
-        components: rustfmt, clippy
-        timeout-minutes: 30
-
     - name: Install cargo-audit
       run: cargo install cargo-audit
 
@@ -271,7 +197,7 @@ jobs:
   build:
     name: Build Assets
     runs-on: ubuntu-latest
-    needs: [test, security]
+    needs: [test]
     if: github.event_name == 'push' || github.event_name == 'release'
 
     steps:
