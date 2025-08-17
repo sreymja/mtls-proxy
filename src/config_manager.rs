@@ -301,6 +301,7 @@ mod tests {
             server: ServerConfig {
                 host: "127.0.0.1".to_string(),
                 port: 8443,
+                enable_tls: true,
                 max_connections: 100,
                 connection_timeout_secs: 30,
                 connection_pool_size: 10,
@@ -314,6 +315,9 @@ mod tests {
                 client_key_path: PathBuf::from("certs/client.key"),
                 ca_cert_path: None,
                 verify_hostname: true,
+                require_client_cert: Some(false),
+                server_cert_path: None,
+                server_key_path: None,
             },
             logging: LoggingConfig {
                 log_dir: PathBuf::from("logs"),

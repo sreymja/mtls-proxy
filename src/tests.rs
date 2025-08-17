@@ -59,11 +59,12 @@ async fn test_config_defaults() {
     let config = Config::default();
 
     assert_eq!(config.server.host, "127.0.0.1");
-    assert_eq!(config.server.port, 8443);
+    assert_eq!(config.server.port, 8440);
+    assert_eq!(config.server.enable_tls, false);
     assert_eq!(config.server.max_connections, 1000);
     assert_eq!(config.server.connection_timeout_secs, 30);
 
-    assert_eq!(config.target.base_url, "https://gpt-4o-mini.internal:443");
+    assert_eq!(config.target.base_url, "https://127.0.0.1:8444");
     assert_eq!(config.target.timeout_secs, 60);
 
     assert_eq!(config.logging.max_log_size_mb, 100);
